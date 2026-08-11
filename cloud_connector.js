@@ -10,3 +10,26 @@ async function pullCloud(){let d=cloudDate(),[stu,att,spe,rem]=await Promise.all
 async function pushCloud(){if(!cloudUser)return;let d=cloudDate();let attendanceRows=students.map(s=>({attendance_date:d,student_id:String(s.id),school_a:!!s.school[0],school_b:!!s.school[1],care_a:!!s.care[0],care_b:!!s.care[1],notified:!!s.notified}));let jobs=[cloud.from('attendance').upsert(attendanceRows)];if(cloudRole==='admin')jobs.push(cloud.from('students').upsert(students.map(s=>({id:String(s.id),name:s.name,grade:s.grade,meal:s.meal,diet:s.diet||'',schedule:s.schedule||'',teacher:s.teacher||'',group_link:s.group||''}))));await Promise.all(jobs);await cloud.from('special_records').delete().eq('record_date',d);await cloud.from('emergency_reminders').delete().eq('reminder_date',d);let specialRows=specials.map(x=>({record_date:d,student_id:String(students.find(s=>s.name===x.name)?.id||''),type:x.type,note:x.note})).filter(x=>x.student_id);let emergencyRows=emergencies.map(x=>({reminder_date:d,student_id:String(students.find(s=>s.name===x.student)?.id||''),reminder_time:x.time,message:x.message})).filter(x=>x.student_id);if(specialRows.length)await cloud.from('special_records').insert(specialRows);if(emergencyRows.length)await cloud.from('emergency_reminders').insert(emergencyRows)}
 async function startCloud(){try{let response=await fetch('/api/supabase-config',{cache:'no-store'}),config=await response.json();if(!response.ok||!config.url||!config.anonKey)throw new Error(config.error||'缺少 Supabase 配置');cloud=window.supabase.createClient(config.url,config.anonKey);localSave=window.save;window.save=()=>{localSave();pushCloud().catch(console.warn)};cloudPanel();let s=await cloud.auth.getSession();if(s.data.session)connected(s.data.session.user)}catch(error){console.warn('Supabase 未连接：',error.message);alert('无法连接 Supabase。请在 Vercel 设置 SUPABASE_URL 和 SUPABASE_ANON_KEY 后重新部署。')}}
 window.addEventListener('load',startCloud);
+window.removeStudent=async id=>{
+  const student=students.find(s=>String(s.id)===String(id));
+  if(!student||!confirm(`确定永久移除「${student.name}」吗？`))return;
+
+  if(cloud){
+    if(cloudRole!=='admin'){
+      alert('只有管理员可以移除学生资料。');
+      return;
+    }
+    const {error}=await cloud.from('students').delete().eq('id',String(id));
+    if(error){
+      alert('无法删除学生资料：'+error.message);
+      return;
+    }
+  }
+
+  students=students.filter(s=>String(s.id)!==String(id));
+  specials=specials.filter(x=>x.name!==student.name);
+  emergencies=emergencies.filter(x=>x.student!==student.name);
+  save();
+  renderAll();
+  alert('学生资料已移除。');
+};
