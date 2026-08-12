@@ -28,6 +28,58 @@
   window.addEventListener('load',()=>setTimeout(()=>{extraStyle();addPages();decorateAttendance();options();renderMeal();renderStay();reminders();bindStay();bindStudent()},100));
 })();
 
+/* 第 06 页：补习与留校资料的统一显示（最后执行，避免旧版文字解析造成显示异常） */
+(()=>{
+  const $=id=>document.getElementById(id);
+  const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  const days=['星期一','星期二','星期三','星期四','星期五','星期六'];
+  const returnDays=days.slice(0,5);
+  let selectedDay='星期一',selectedRange='',keyword='';
+  const readPlans=()=>{try{return JSON.parse(localStorage.getItem('fuchengStudentReturnPlans')||'{}')}catch{return {}}};
+  const button=(text,on,active=false)=>`<button class="${active?'active':''}" data-value="${esc(text)}">${esc(text)}</button>`;
+  function parse(value){
+    try { const rows=JSON.parse(value||'[]'); if(Array.isArray(rows)) return rows.map(x=>({day:x.day||x.week||'',time:x.time||'',teacher:x.teacher||'',subject:x.subject||'',place:x.place||''})); } catch {}
+    return String(value||'').split(/[；;\n]+/).map(line=>{let bits=line.split(/[｜|]/).map(x=>x.trim()),m=bits[0]?.match(/(星期[一二三四五六])\s*(.+)/);return m?{day:m[1],time:m[2],teacher:bits[1]||'',subject:bits[2]||'',place:bits[3]||''}:null}).filter(Boolean);
+  }
+  function rangeText(v){return String(v||'').replace(/\s+/g,'').replace(/(\d{1,2}:\d{2})-(\d{1,2}:\d{2})/,'$1 到 $2')}
+  function install(){
+    const page=$('tuition'); if(!page) return;
+    const form=$('easyStudentForm');
+    if(form&&!form.dataset.stayEndReady){
+      form.dataset.stayEndReady='1';
+      form.querySelectorAll('.day-card').forEach(card=>{
+        const meal=card.querySelector('.bring-meal');
+        if(meal&&!meal.querySelector('[name="stay_end"]'))meal.insertAdjacentHTML('beforeend','<label class="stay-end">留校到几点<input name="stay_end" type="time" value="17:00"></label>');
+      });
+      form.addEventListener('submit',()=>{const id=form.elements.id.value||String(Date.now()),all=readPlans();all[id]=all[id]||{};form.querySelectorAll('.day-card').forEach(card=>{const day=card.dataset.day;all[id]=all[id]||{};all[id][day]=all[id][day]||{};all[id][day].stayEnd=card.querySelector('[name="stay_end"]')?.value||''});localStorage.setItem('fuchengStudentReturnPlans',JSON.stringify(all));setTimeout(draw,80)},true);
+    }
+    const nav=document.querySelector('[data-page="stay"]'); if(nav)nav.remove();
+    const oldStay=$('stay'); if(oldStay)oldStay.remove();
+    page.innerHTML=`<div class="two-col"><section class="card"><h2 class="section-title">学生补习时间</h2><p class="muted">先选星期，再选择补习的“几点到几点”；也可以用学生名字搜索。</p><div class="week-tabs" id="tuitionDays"></div><div class="time-tabs" id="tuitionRanges"></div><div class="admin-search"><input id="tuitionSearch" placeholder="输入学生名字搜索补习资料"><button class="outline" id="clearTuitionSearch">清除</button></div><div id="tuitionResult"></div></section><aside class="card"><h2 class="section-title">今日／本周留校信息</h2><p class="muted">选择星期，查看当天谁留校、是否带饭及留校到几点。</p><div class="week-tabs" id="stayDays"></div><div id="stayResult"></div></aside></div>`;
+    const navTuition=document.querySelector('[data-page="tuition"]');
+    if(navTuition)navTuition.onclick=e=>{document.querySelectorAll('.nav button').forEach(x=>x.classList.remove('active'));e.currentTarget.classList.add('active');document.querySelectorAll('.page').forEach(x=>x.classList.add('hidden'));page.classList.remove('hidden');$('pageTitle').textContent='学生补习时间';draw()};
+    draw();
+  }
+  function draw(){
+    if(!$('tuitionResult'))return;
+    const all=students.flatMap(student=>parse(student.tuition).filter(row=>row.day===selectedDay).map(row=>({student,row})));
+    const ranges=[...new Set(all.map(x=>x.row.time).filter(Boolean))];
+    if(selectedRange&&!ranges.includes(selectedRange))selectedRange='';
+    $('tuitionDays').innerHTML=days.map(d=>button(d,null,d===selectedDay)).join('');
+    $('tuitionDays').querySelectorAll('button').forEach(b=>b.onclick=()=>{selectedDay=b.dataset.value;selectedRange='';draw()});
+    $('tuitionRanges').innerHTML=button('全部时间',null,!selectedRange)+ranges.map(t=>button(rangeText(t),null,t===selectedRange)).join('');
+    $('tuitionRanges').querySelectorAll('button').forEach(b=>b.onclick=()=>{selectedRange=b.textContent==='全部时间'?'':ranges.find(t=>rangeText(t)===b.textContent)||'';draw()});
+    const search=$('tuitionSearch'); if(search&&!search.dataset.bound){search.dataset.bound='1';search.oninput=()=>{keyword=search.value.trim().toLowerCase();draw()};$('clearTuitionSearch').onclick=()=>{keyword='';search.value='';draw()}}
+    const visible=all.filter(x=>(!selectedRange||x.row.time===selectedRange)&&(!keyword||String(x.student.name).toLowerCase().includes(keyword)));
+    $('tuitionResult').innerHTML=visible.length?visible.map(({student,row})=>`<div class="emergency"><b>${esc(student.name)}</b> · ${esc(student.grade)}<br><b>${esc(selectedDay)}　${esc(rangeText(row.time)||'时间未填写')}</b><br>补习老师：${esc(row.teacher||'未填写')}　｜　科目：${esc(row.subject||'未填写')}<br><span class="muted">补习地点：${esc(row.place||'未填写')}</span></div>`).join(''):'<p class="muted">这个星期／时间没有补习资料。</p>';
+    $('stayDays').innerHTML=returnDays.map(d=>button(d,null,d===selectedDay)).join('');
+    $('stayDays').querySelectorAll('button').forEach(b=>b.onclick=()=>{selectedDay=b.dataset.value;selectedRange='';draw()});
+    const plans=readPlans(),stay=students.map(student=>({student,plan:plans[String(student.id)]?.[selectedDay]})).filter(x=>x.plan?.status==='stay');
+    $('stayResult').innerHTML=stay.length?stay.map(({student,plan})=>`<div class="emergency"><b>${esc(student.name)}</b> · ${esc(student.grade)}<br>${plan.bringMeal==='yes'?'🍱 需要带饭':'无需带饭'}<br><span class="muted">留校到：${esc(plan.stayEnd||'未填写')}</span></div>`).join(''):'<p class="muted">${esc(selectedDay)}没有学生留校。</p>';
+  }
+  window.addEventListener('load',()=>setTimeout(install,2200));
+})();
+
 /* 后台资料表单：左侧逐项填写，右侧搜索及资料预览 */
 (()=>{
   const $=id=>document.getElementById(id);
