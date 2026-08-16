@@ -64,7 +64,7 @@
     if(job?.status==='processing')return `<button disabled style="${common}${buttonStyle('plain')}">发送中…</button>`;
     if(job?.status==='manual_opened')return `<button style="${common}${buttonStyle('ok')}" onclick="confirmManualSent('${esc(student.id)}')">确认已发送</button>`;
     if(job?.status==='failed')return `<button style="${common}${buttonStyle('bad')}" onclick="handleFailedMessage('${esc(student.id)}')">自动发送失败</button>`;
-    const label=deliveryMode==='manual'?'WhatsApp手动发送':deliveryMode==='automatic'?'建立发送任务':'自动发送';
+    const label=deliveryMode==='manual'?'WhatsApp手动发送':deliveryMode==='automatic'?'WhatsApp自动发送':'自动发送（可手动补发）';
     return `<button class="greenbtn" style="${common}" onclick="shareStudentWhatsapp('${esc(student.id)}')">${label}</button>`;
   };
 
