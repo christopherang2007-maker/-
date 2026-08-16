@@ -14,8 +14,7 @@
   }
 
   function dayStartIso(){
-    const now=new Date();
-    return new Date(now.getFullYear(),now.getMonth(),now.getDate()).toISOString();
+    return new Date(`${today()}T00:00:00+08:00`).toISOString();
   }
 
   function deviceOnline(){
@@ -48,6 +47,7 @@
     });
     updateSettingsPanel();
     if(render&&typeof window.renderAttendance==='function')window.renderAttendance();
+    setTimeout(updateBulkButton,0);
   }
 
   function buttonStyle(kind){
@@ -186,6 +186,67 @@
     }
   };
 
+  function visibleAutomaticCandidates(){
+    const ids=[...document.querySelectorAll('#careList button[onclick^="shareStudentWhatsapp"]')]
+      .map(button=>(button.getAttribute('onclick')||'').match(/shareStudentWhatsapp\('([^']+)'\)/)?.[1])
+      .filter(Boolean);
+    const unique=[...new Set(ids)];
+    const visible=unique.map(id=>students.find(student=>String(student.id)===String(id))).filter(Boolean);
+    const eligible=visible.filter(student=>{
+      const job=jobByStudent.get(String(student.id));
+      return !student.special&&student.care?.every(Boolean)&&groupByStudent.has(String(student.id))&&(!job||job.status==='cancelled');
+    });
+    const missingGroup=visible.filter(student=>!groupByStudent.has(String(student.id)));
+    return {eligible,missingGroup};
+  }
+
+  function addBulkButton(){
+    const notice=document.querySelector('#care .notice');
+    if(!notice||document.getElementById('bulkAutomaticWhatsapp'))return;
+    notice.insertAdjacentHTML('afterend',`<div id="bulkAutomaticWhatsapp" class="notice" style="display:none;margin-top:10px;background:#eef9f5;border-color:#9fd9c8"><button type="button" class="greenbtn" id="bulkAutomaticWhatsappButton" style="margin:0;width:100%">批量自动发送当前名单</button><small id="bulkAutomaticWhatsappHelp" style="display:block;margin-top:7px">只会为当前画面中完成托育双确认并已绑定群组ID的学生建立任务。</small></div>`);
+    document.getElementById('bulkAutomaticWhatsappButton').onclick=window.bulkSendWhatsappTasks;
+  }
+
+  function updateBulkButton(){
+    const panel=document.getElementById('bulkAutomaticWhatsapp');
+    const button=document.getElementById('bulkAutomaticWhatsappButton');
+    const help=document.getElementById('bulkAutomaticWhatsappHelp');
+    if(!panel||!button)return;
+    const automatic=deliveryMode==='automatic'||deliveryMode==='hybrid';
+    panel.style.display=automatic?'block':'none';
+    if(!automatic)return;
+    const {eligible,missingGroup}=visibleAutomaticCandidates();
+    button.disabled=eligible.length===0;
+    button.textContent=eligible.length?`批量自动发送当前名单（${eligible.length}人）`:'当前名单没有可建立的任务';
+    if(help)help.textContent=`只处理当前画面：可发送 ${eligible.length} 人${missingGroup.length?`；另有 ${missingGroup.length} 人未绑定群组ID`:''}。等待、发送中及已发送的学生会自动跳过。`;
+  }
+
+  window.bulkSendWhatsappTasks=async()=>{
+    if(!['automatic','hybrid'].includes(deliveryMode))return alert('请先在后台开启自动或混合发送模式。');
+    if(!window.cloudUser)return alert('网站尚未完成云端登录。');
+    await refreshMessagingState(false);
+    const {eligible,missingGroup}=visibleAutomaticCandidates();
+    if(!eligible.length)return alert(missingGroup.length?'当前名单没有可发送学生；请先为学生绑定WhatsApp家庭群ID。':'当前名单没有尚待建立的自动发送任务。');
+    const offline=!deviceOnline()||!senderDevice?.whatsapp_ready;
+    const names=eligible.map(student=>student.name).join('、');
+    const warning=offline?'\n\n发送电脑离线或WhatsApp未连接，任务会等待电脑恢复。':'';
+    if(!confirm(`确定为当前名单中的 ${eligible.length} 位学生建立自动发送任务吗？\n\n${names}${warning}`))return;
+    const button=document.getElementById('bulkAutomaticWhatsappButton');
+    if(button){button.disabled=true;button.textContent='正在建立任务…'}
+    let success=0;
+    const failures=[];
+    for(const student of eligible){
+      try{
+        const existing=jobByStudent.get(String(student.id));
+        const suffix=existing?.status==='cancelled'?`:retry:${Date.now()}:${student.id}`:'';
+        await insertJob(student,'automatic','pending',suffix);
+        success++;
+      }catch(error){failures.push(`${student.name}：${error.message}`)}
+    }
+    await refreshMessagingState(true);
+    alert(`批量建立完成：成功 ${success} 人，失败 ${failures.length} 人。${failures.length?`\n\n${failures.join('\n')}`:''}`);
+  };
+
   function addSettingsPanel(){
     const admin=document.getElementById('admin');
     if(!admin||document.getElementById('whatsappDeliverySettings'))return;
@@ -206,6 +267,7 @@
     if(save)save.disabled=window.cloudRole!=='admin';
     const reset=document.getElementById('resetWhatsappSentStatus');
     if(reset)reset.disabled=window.cloudRole!=='admin';
+    setTimeout(updateBulkButton,0);
   }
 
   async function saveDeliveryMode(){
@@ -215,6 +277,7 @@
     if(error)return alert('无法保存发送模式：'+error.message);
     deliveryMode=mode;
     window.renderAttendance();
+    updateBulkButton();
     alert('发送模式已保存。');
   }
 
@@ -282,6 +345,7 @@
     if(initialized)return;
     initialized=true;
     addSettingsPanel();
+    addBulkButton();
     addGroupFields();
     wrapStudentEdit();
     const previousPull=window.pullCloud;
