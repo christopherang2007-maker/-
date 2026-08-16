@@ -103,14 +103,14 @@
     alert('通知文案已复制。请在正确的WhatsApp家庭群粘贴并发送，再回到网站点击“确认已发送”。');
   }
 
-  async function startManual(student,existingJob=null){
+  async function startManual(student,existingJob=null,keySuffix=''){
     if(existingJob){
       const {error}=await cloud.from('message_jobs').update({status:'manual_opened'}).eq('id',existingJob.id);
       if(error)throw error;
       existingJob.status='manual_opened';
       jobByStudent.set(String(student.id),existingJob);
     }else{
-      await insertJob(student,'manual','manual_opened');
+      await insertJob(student,'manual','manual_opened',keySuffix);
     }
     window.renderAttendance();
     openManual(student);
@@ -119,18 +119,20 @@
   window.shareStudentWhatsapp=async id=>{
     const student=students.find(item=>String(item.id)===String(id));
     if(!student||!window.cloudUser)return alert('网站尚未完成云端登录。');
-    if(jobByStudent.has(String(student.id))&&!['failed','cancelled'].includes(jobByStudent.get(String(student.id)).status))return;
+    const existingJob=jobByStudent.get(String(student.id));
+    if(existingJob&&!['failed','cancelled'].includes(existingJob.status))return;
+    const retrySuffix=existingJob?.status==='cancelled'?`:retry:${Date.now()}`:'';
     try{
       if(deliveryMode==='manual'){
         if(!confirm(`打开WhatsApp手动通知「${student.name}」吗？`))return;
-        await startManual(student);
+        await startManual(student,null,retrySuffix);
         return;
       }
       if(!groupByStudent.has(String(student.id)))return alert('这个学生尚未设置WhatsApp家庭群ID。请管理员先在学生资料中保存群组ID。');
       const offline=!deviceOnline()||!senderDevice?.whatsapp_ready;
       const warning=offline?'\n\n发送电脑目前离线或WhatsApp未连接，任务会等待电脑恢复。':'';
       if(!confirm(`确认建立「${student.name}」的到达通知任务吗？${warning}`))return;
-      await insertJob(student,'automatic','pending');
+      await insertJob(student,'automatic','pending',retrySuffix);
       window.renderAttendance();
       alert(offline?'任务已建立，目前等待发送电脑上线。':'任务已建立，正在等待发送电脑处理。');
     }catch(error){
@@ -166,11 +168,29 @@
     }catch(error){alert('无法处理失败任务：'+error.message)}
   };
 
+  window.clearSentStatus=async()=>{
+    if(window.cloudRole!=='admin')return alert('只有管理员可以重置已发送状态。');
+    if(!confirm('这只会重置今天的“已发送”标记，已经送到WhatsApp的信息不会被撤回。重置后再次点击可能造成重复发送。确定继续吗？'))return;
+    try{
+      const jobs=await cloud.from('message_jobs').update({status:'cancelled'}).in('status',['sent','manual_sent']).gte('created_at',dayStartIso());
+      if(jobs.error)throw jobs.error;
+      const attendance=await cloud.from('attendance').update({notified:false}).eq('attendance_date',today());
+      if(attendance.error)throw attendance.error;
+      students.forEach(student=>student.notified=false);
+      if(typeof localSave==='function')localSave();
+      await refreshMessagingState(true);
+      alert('今天的“已发送”标记已重置。现在可以重新建立发送任务。');
+    }catch(error){
+      alert('无法重置已发送状态：'+error.message);
+    }
+  };
+
   function addSettingsPanel(){
     const admin=document.getElementById('admin');
     if(!admin||document.getElementById('whatsappDeliverySettings'))return;
-    admin.insertAdjacentHTML('afterbegin',`<div class="card" id="whatsappDeliverySettings" style="margin-bottom:18px"><h2 class="section-title">WhatsApp讯息发送方式</h2><div class="formgrid"><label>发送模式<select id="whatsappDeliveryMode"><option value="manual">WhatsApp Link手动发送</option><option value="automatic">Supabase电脑自动发送</option><option value="hybrid">自动优先，失败后手动补发</option></select></label><div><b>发送电脑状态</b><p id="senderDeviceStatus" class="muted">正在读取…</p></div><button type="button" class="save" id="saveWhatsappDeliveryMode">保存发送模式</button></div><p class="muted">只有管理员可以修改。自动模式不会直接连接老师电脑IP，网站只会把任务写入Supabase。</p></div>`);
+    admin.insertAdjacentHTML('afterbegin',`<div class="card" id="whatsappDeliverySettings" style="margin-bottom:18px"><h2 class="section-title">WhatsApp讯息发送方式</h2><div class="formgrid"><label>发送模式<select id="whatsappDeliveryMode"><option value="manual">WhatsApp Link手动发送</option><option value="automatic">Supabase电脑自动发送</option><option value="hybrid">自动优先，失败后手动补发</option></select></label><div><b>发送电脑状态</b><p id="senderDeviceStatus" class="muted">正在读取…</p></div><button type="button" class="save" id="saveWhatsappDeliveryMode">保存发送模式</button><button type="button" class="outline" id="resetWhatsappSentStatus" style="color:#b3261e;border-color:#e4a5a5">重置今日“已发送”标记</button></div><p class="muted">只有管理员可以修改。自动模式不会直接连接老师电脑IP，网站只会把任务写入Supabase。重置标记不会撤回已经送到WhatsApp的信息。</p></div>`);
     document.getElementById('saveWhatsappDeliveryMode').onclick=saveDeliveryMode;
+    document.getElementById('resetWhatsappSentStatus').onclick=window.clearSentStatus;
   }
 
   function updateSettingsPanel(){
@@ -183,6 +203,8 @@
     }
     const save=document.getElementById('saveWhatsappDeliveryMode');
     if(save)save.disabled=window.cloudRole!=='admin';
+    const reset=document.getElementById('resetWhatsappSentStatus');
+    if(reset)reset.disabled=window.cloudRole!=='admin';
   }
 
   async function saveDeliveryMode(){
