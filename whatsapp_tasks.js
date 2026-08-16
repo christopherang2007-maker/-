@@ -1,12 +1,13 @@
 /* WhatsApp dual delivery: manual link or Supabase queue. No secret key is used here. */
 (()=>{
-  const today=()=>new Date().toLocaleDateString('sv-SE');
+  const today=()=>new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Kuala_Lumpur',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());
   const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
   const jobByStudent=new Map();
   const groupByStudent=new Map();
   let deliveryMode='manual';
   let senderDevice=null;
   let initialized=false;
+  let activeDate=today();
 
   function messageFor(student){
     return `【托育班通知｜${student.name}】宝贝已安全到达托育班了哦~ ✨`;
@@ -263,6 +264,20 @@
     });
   }
 
+  async function resetWhenDateChanges(){
+    const current=today();
+    if(current===activeDate)return;
+    activeDate=current;
+    if(window.cloudUser&&typeof pullCloud==='function'){
+      await pullCloud();
+    }else{
+      students.forEach(student=>{student.school=[false,false];student.care=[false,false];student.mealTaken=false;student.notified=false;student.special=null});
+      if(typeof localSave==='function')localSave();
+      if(typeof window.renderAll==='function')window.renderAll();
+    }
+    await refreshMessagingState(true);
+  }
+
   function install(){
     if(initialized)return;
     initialized=true;
@@ -272,6 +287,7 @@
     const previousPull=window.pullCloud;
     if(previousPull)window.pullCloud=async()=>{await previousPull();await refreshMessagingState(false)};
     setInterval(()=>refreshMessagingState(true).catch(console.warn),7000);
+    setInterval(()=>resetWhenDateChanges().catch(console.warn),30000);
     setTimeout(()=>refreshMessagingState(true).catch(console.warn),600);
   }
 
