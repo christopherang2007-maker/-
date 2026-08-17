@@ -16,7 +16,11 @@
    ```
 
    不要把所有新注册账号一起批准。
-3. 执行 `supabase/migrations/20260816165113_website_whatsapp_task_controls.sql`。
+3. 按文件名顺序执行 `supabase/migrations` 中尚未执行过的 SQL。学校功能新增的文件是：
+
+   - `20260817131237_add_schools_and_student_weekly_plans.sql`
+
+   这份 SQL 只新增学校表、学生学校字段与每周安排字段，不会清除学生资料。
 4. 在 Supabase Authentication 设置关闭公开注册（Allow new users to sign up），老师账号由管理员预先建立和批准。
 5. Vercel 环境变量使用：
 
@@ -24,7 +28,7 @@
    - `SUPABASE_PUBLISHABLE_KEY`
 
    为兼容旧部署，程序仍会读取 `SUPABASE_ANON_KEY`，但不要设置 service-role/secret key。
-6. 将这个目录部署至 Vercel，再清除浏览器旧缓存或重新打开网站。
+6. 将这个目录部署至 Vercel，再重新打开网站；本版本已提升 PWA 缓存编号，旧脚本会自动淘汰。
 
 ## 操作流程
 

@@ -6,8 +6,56 @@ const cloudDate=()=>new Date().toLocaleDateString('sv-SE');
 function cloudPanel(){document.body.insertAdjacentHTML('beforeend',`<div id="cloudLogin" style="position:fixed;inset:0;background:#17223be8;z-index:99;display:grid;place-items:center"><form id="cloudForm" style="width:min(390px,90vw);background:#fff;padding:28px;border-radius:16px;box-shadow:0 12px 44px #0005"><h2 style="margin:0 0 8px">安心托育 · 云端登录</h2><p style="color:#6e7b91;font-size:13px;margin:0 0 18px">只允许管理员已经建立并批准的老师账号登录。</p><input required name="email" type="email" placeholder="邮箱" style="width:100%;padding:11px;margin:6px 0;border:1px solid #e5eaf2;border-radius:8px"><input required name="password" type="password" placeholder="密码（至少 6 位）" minlength="6" style="width:100%;padding:11px;margin:6px 0;border:1px solid #e5eaf2;border-radius:8px"><div id="loginError" style="min-height:18px;color:#c33;font-size:12px;margin:5px 0"></div><button style="width:100%;padding:11px;border:0;border-radius:8px;background:#3478f6;color:#fff;font-weight:bold;cursor:pointer">登录</button></form></div><button id="logout" style="position:fixed;right:18px;bottom:18px;z-index:5;border:0;border-radius:99px;background:#17223b;color:#fff;padding:9px 13px;display:none;cursor:pointer">退出云端账号</button>`);document.getElementById('cloudForm').onsubmit=e=>login(e,false);document.getElementById('logout').onclick=async()=>{await cloud.auth.signOut();location.reload()}}
 async function login(e){if(e)e.preventDefault();let f=document.getElementById('cloudForm'),email=f.email.value,password=f.password.value,err=document.getElementById('loginError');err.textContent='';let r=await cloud.auth.signInWithPassword({email,password});if(r.error){err.textContent=r.error.message;return}await connected(r.data.user||r.data.session?.user)}
 async function connected(user){cloudUser=user;window.cloudUser=user;let p=await cloud.from('profiles').select('role,approved').eq('id',user.id).single();if(p.error||!p.data?.approved){await cloud.auth.signOut();window.cloudUser=null;document.getElementById('loginError').textContent=p.error?.message||'这个账号尚未获得管理员批准。';return}cloudRole=p.data.role||'teacher';window.cloudRole=cloudRole;document.getElementById('cloudLogin').remove();document.getElementById('logout').style.display='block';await pullCloud();if(cloudRole!=='admin')document.querySelector('[data-page="admin"]').style.display='none'}
-async function pullCloud(){let d=cloudDate(),[stu,att,spe,rem]=await Promise.all([cloud.from('students').select('*'),cloud.from('attendance').select('*').eq('attendance_date',d),cloud.from('special_records').select('*').eq('record_date',d),cloud.from('emergency_reminders').select('*').eq('reminder_date',d)]);if(stu.error){alert('无法读取云端资料：'+stu.error.message);return}if(stu.data.length){students=stu.data.map(x=>({id:x.id,name:x.name,grade:x.grade,meal:x.meal,diet:x.diet||'',schedule:x.schedule,teacher:x.teacher||'',group:x.group_link||'',school:[false,false],care:[false,false],special:null,notified:false}));let map=new Map((att.data||[]).map(x=>[x.student_id,x]));students.forEach(s=>{let a=map.get(s.id);if(a){s.school=[a.school_a,a.school_b];s.care=[a.care_a,a.care_b];s.notified=a.notified}});specials=(spe.data||[]).map(x=>{let s=students.find(a=>a.id===x.student_id);if(s)s.special={type:x.type,note:x.note};return {id:x.id,name:s?.name||'未知学生',type:x.type,note:x.note}});emergencies=(rem.data||[]).map(x=>({id:x.id,student:students.find(a=>a.id===x.student_id)?.name||'未知学生',time:x.reminder_time.slice(0,5),message:x.message}));localSave();renderAll()}else if(cloudRole==='admin'){await pushCloud()}}
-async function pushCloud(){if(!cloudUser)return;let d=cloudDate();let attendanceRows=students.map(s=>({attendance_date:d,student_id:String(s.id),school_a:!!s.school[0],school_b:!!s.school[1],care_a:!!s.care[0],care_b:!!s.care[1],notified:!!s.notified}));let jobs=[cloud.from('attendance').upsert(attendanceRows)];if(cloudRole==='admin')jobs.push(cloud.from('students').upsert(students.map(s=>({id:String(s.id),name:s.name,grade:s.grade,meal:s.meal,diet:s.diet||'',schedule:s.schedule||'',teacher:s.teacher||'',group_link:s.group||''}))));await Promise.all(jobs);await cloud.from('special_records').delete().eq('record_date',d);await cloud.from('emergency_reminders').delete().eq('reminder_date',d);let specialRows=specials.map(x=>({record_date:d,student_id:String(students.find(s=>s.name===x.name)?.id||''),type:x.type,note:x.note})).filter(x=>x.student_id);let emergencyRows=emergencies.map(x=>({reminder_date:d,student_id:String(students.find(s=>s.name===x.student)?.id||''),reminder_time:x.time,message:x.message})).filter(x=>x.student_id);if(specialRows.length)await cloud.from('special_records').insert(specialRows);if(emergencyRows.length)await cloud.from('emergency_reminders').insert(emergencyRows)}
+async function pullCloud(){
+  const d=cloudDate();
+  const [stu,att,spe,rem,schoolsResult]=await Promise.all([
+    cloud.from('students').select('*'),
+    cloud.from('attendance').select('*').eq('attendance_date',d),
+    cloud.from('special_records').select('*').eq('record_date',d),
+    cloud.from('emergency_reminders').select('*').eq('reminder_date',d),
+    cloud.from('schools').select('*').order('name')
+  ]);
+  if(stu.error){alert('无法读取云端资料：'+stu.error.message);return}
+  window.schoolCatalog=schoolsResult.error?[]:(schoolsResult.data||[]);
+  window.dispatchEvent(new CustomEvent('schoolCatalogUpdated',{detail:window.schoolCatalog}));
+  if(stu.data.length){
+    students=stu.data.map(x=>({
+      id:x.id,name:x.name,grade:x.grade,meal:x.meal,diet:x.diet||'',schedule:x.schedule,
+      teacher:x.teacher||'',group:x.group_link||'',photo_url:x.photo_url||'',notes:x.notes||'',
+      tuition:x.tuition_info||'',school_id:x.school_id||'',weekly_plan:x.weekly_plan||{},
+      school:[false,false],care:[false,false],special:null,notified:false,mealTaken:false
+    }));
+    localStorage.setItem('fuchengStudentReturnPlans',JSON.stringify(Object.fromEntries(students.map(s=>[String(s.id),s.weekly_plan||{}]))));
+    const map=new Map((att.data||[]).map(x=>[String(x.student_id),x]));
+    students.forEach(s=>{const a=map.get(String(s.id));if(a){s.school=[!!a.school_a,!!a.school_b];s.care=[!!a.care_a,!!a.care_b];s.notified=!!a.notified;s.mealTaken=!!a.meal_taken}});
+    specials=(spe.data||[]).map(x=>{const s=students.find(a=>String(a.id)===String(x.student_id));if(s)s.special={type:x.type,note:x.note};return {id:x.id,student_id:x.student_id,name:s?.name||'未知学生',type:x.type,note:x.note}});
+    emergencies=(rem.data||[]).map(x=>({id:x.id,student:students.find(a=>String(a.id)===String(x.student_id))?.name||'未知学生',time:x.reminder_time.slice(0,5),message:x.message}));
+    localSave();renderAll();
+  }else if(cloudRole==='admin'){
+    await pushCloud();
+  }
+}
+async function pushCloud(){
+  if(!cloudUser)return;
+  const d=cloudDate();
+  const attendanceRows=students.map(s=>({attendance_date:d,student_id:String(s.id),school_a:!!s.school?.[0],school_b:!!s.school?.[1],care_a:!!s.care?.[0],care_b:!!s.care?.[1],notified:!!s.notified,meal_taken:!!s.mealTaken}));
+  const jobs=[cloud.from('attendance').upsert(attendanceRows)];
+  if(cloudRole==='admin'){
+    const studentRows=students.map(s=>({
+      id:String(s.id),name:s.name,grade:s.grade,meal:s.meal,diet:s.diet||'',schedule:s.schedule||'',
+      teacher:s.teacher||'',group_link:s.group||'',photo_url:s.photo_url||'',notes:s.notes||'',
+      tuition_info:s.tuition||'',school_id:s.school_id||null,weekly_plan:s.weekly_plan||{}
+    }));
+    jobs.push(cloud.from('students').upsert(studentRows));
+  }
+  await Promise.all(jobs);
+  await cloud.from('special_records').delete().eq('record_date',d);
+  await cloud.from('emergency_reminders').delete().eq('reminder_date',d);
+  const specialRows=specials.map(x=>({record_date:d,student_id:String(x.student_id||students.find(s=>s.name===x.name)?.id||''),type:x.type,note:x.note})).filter(x=>x.student_id);
+  const emergencyRows=emergencies.map(x=>({reminder_date:d,student_id:String(students.find(s=>s.name===x.student)?.id||''),reminder_time:x.time,message:x.message})).filter(x=>x.student_id);
+  if(specialRows.length)await cloud.from('special_records').insert(specialRows);
+  if(emergencyRows.length)await cloud.from('emergency_reminders').insert(emergencyRows);
+}
 async function startCloud(){try{let response=await fetch('/api/supabase-config',{cache:'no-store'}),config=await response.json();if(!response.ok||!config.url||!config.anonKey)throw new Error(config.error||'缺少 Supabase 配置');cloud=window.supabase.createClient(config.url,config.anonKey);window.cloud=cloud;localSave=window.save;window.save=()=>{localSave();pushCloud().catch(console.warn)};cloudPanel();let s=await cloud.auth.getSession();if(s.data.session)connected(s.data.session.user)}catch(error){console.warn('Supabase 未连接：',error.message);alert('无法连接 Supabase。请在 Vercel 设置 SUPABASE_URL 和 SUPABASE_PUBLISHABLE_KEY 后重新部署。')}}
 
 // 学生资料必须先从 Supabase 删除；否则下一次同步时会被云端旧资料还原。
