@@ -9,6 +9,17 @@
   const schoolFor=student=>catalog().find(item=>String(item.id)===String(student?.school_id));
   const readPlans=()=>{try{return JSON.parse(localStorage.getItem('fuchengStudentReturnPlans')||'{}')}catch{return {}}};
   const planFor=student=>student?.weekly_plan&&Object.keys(student.weekly_plan).length?student.weekly_plan:(readPlans()[String(student?.id)]||{});
+  const attendanceTimeFor=(student,day)=>{
+    const plan=planFor(student)?.[day]||{};
+    if(plan.status==='stay')return plan.stayEnd||'17:00';
+    return plan.time||'';
+  };
+  const effectiveScheduleFor=student=>{
+    const plan=planFor(student);
+    if(!plan||!Object.keys(plan).length)return student?.schedule||'';
+    return weekDays.map(day=>`${day} ${attendanceTimeFor(student,day)||'13:00'}`).join('；');
+  };
+  const applyEffectiveSchedules=()=>students.forEach(student=>{const schedule=effectiveScheduleFor(student);if(schedule)student.schedule=schedule});
   const isAbsent=(student,day=todayWeek())=>planFor(student)?.[day]?.status==='absent';
   const schoolComplete=student=>{
     const required=Number(schoolFor(student)?.confirmation_count||2);
@@ -29,10 +40,10 @@
   function installStyle(){
     if($('schoolFeatureStyle'))return;
     document.head.insertAdjacentHTML('beforeend',`<style id="schoolFeatureStyle">
-      .school-filter{display:flex;align-items:center;gap:10px;margin:12px 0;color:#536178;font-weight:700}.school-filter select{min-width:230px;border:1px solid #dce4f1;border-radius:8px;padding:9px 11px;background:#fff;font:inherit}.school-manager{margin-top:20px;border-top:1px solid #e5eaf2;padding-top:18px}.school-manager-grid{display:grid;grid-template-columns:1fr 1fr;gap:9px}.school-manager-grid label{font-size:12px;font-weight:700;color:#536178}.school-manager-grid input,.school-manager-grid select{width:100%;margin-top:5px;border:1px solid #dce4f1;border-radius:8px;padding:8px;font:inherit}.school-manager-grid .full{grid-column:1/-1}.school-entry{border-top:1px solid #e5eaf2;padding:10px 0}.school-entry small{display:block;color:#6e7b91;margin:3px 0}.attendance-row[data-absent="true"]{opacity:.62;font-style:italic;background:#f5f6f8}.daily-record-form{display:grid;gap:12px}.daily-record-form input,.daily-record-form textarea{width:100%;border:1px solid #dce4f1;border-radius:8px;padding:10px;margin-top:6px;font:inherit}.daily-record-form textarea{min-height:110px;resize:vertical}.daily-record-item{border-left:4px solid #3478f6}.carrier-note{display:block;color:#6e7b91;font-size:11px;margin-top:3px}.special-controls{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}.special-controls label{font-size:13px;color:#536178}.special-controls input,.special-controls select,.special-controls textarea{width:100%;border:1px solid #dce4f1;border-radius:8px;padding:9px;margin-top:5px;font:inherit}.special-controls textarea{min-height:76px;resize:vertical}.special-controls .full{grid-column:1/-1}.special-statuses{display:flex;flex-wrap:wrap;gap:5px;margin:8px 0}.summary-grade-grid{display:grid;grid-template-columns:repeat(6,minmax(155px,1fr));gap:10px;overflow-x:auto;padding-bottom:6px}.summary-grade-column{min-height:190px;background:#f8faff;border:1px solid #e5eaf2;border-radius:11px;padding:10px}.summary-grade-column h3{margin:0 0 10px;font-size:14px;color:#245ccc}.summary-special-item{background:#fff;border-left:4px solid #f3943f;border-radius:8px;padding:9px;margin-top:8px;font-size:12px}.summary-special-item b{font-size:13px}.summary-special-item small{display:block;color:#6e7b91;margin-top:4px;line-height:1.45}@media(max-width:760px){.school-manager-grid,.special-controls{grid-template-columns:1fr}.school-manager-grid .full,.special-controls .full{grid-column:1}.school-filter{align-items:flex-start;flex-direction:column}.school-filter select{width:100%}.summary-grade-grid{grid-template-columns:repeat(6,155px)}}
+      .school-filter{display:flex;align-items:center;gap:10px;margin:12px 0;color:#536178;font-weight:700}.school-filter select{min-width:230px;border:1px solid #dce4f1;border-radius:8px;padding:9px 11px;background:#fff;font:inherit}.school-manager{margin-top:20px;border-top:1px solid #e5eaf2;padding-top:18px}.school-manager-grid{display:grid;grid-template-columns:1fr 1fr;gap:9px}.school-manager-grid label{font-size:12px;font-weight:700;color:#536178}.school-manager-grid input,.school-manager-grid select{width:100%;margin-top:5px;border:1px solid #dce4f1;border-radius:8px;padding:8px;font:inherit}.school-manager-grid .full{grid-column:1/-1}.school-entry{border-top:1px solid #e5eaf2;padding:10px 0}.school-entry small{display:block;color:#6e7b91;margin:3px 0}.attendance-row[data-absent="true"]{opacity:.62;font-style:italic;background:#f5f6f8}.return-time-disabled{color:#9aa5b5!important}.day-card .return-time-disabled input:disabled{color:#8994a5;background:#e8ebf0;border-color:#d4d9e1;cursor:not-allowed;opacity:1}.daily-record-form{display:grid;gap:12px}.daily-record-form input,.daily-record-form textarea{width:100%;border:1px solid #dce4f1;border-radius:8px;padding:10px;margin-top:6px;font:inherit}.daily-record-form textarea{min-height:110px;resize:vertical}.daily-record-item{border-left:4px solid #3478f6}.carrier-note{display:block;color:#6e7b91;font-size:11px;margin-top:3px}.special-controls{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}.special-controls label{font-size:13px;color:#536178}.special-controls input,.special-controls select,.special-controls textarea{width:100%;border:1px solid #dce4f1;border-radius:8px;padding:9px;margin-top:5px;font:inherit}.special-controls textarea{min-height:76px;resize:vertical}.special-controls .full{grid-column:1/-1}.special-statuses{display:flex;flex-wrap:wrap;gap:5px;margin:8px 0}.summary-grade-grid{display:grid;grid-template-columns:repeat(6,minmax(155px,1fr));gap:10px;overflow-x:auto;padding-bottom:6px}.summary-grade-column{min-height:190px;background:#f8faff;border:1px solid #e5eaf2;border-radius:11px;padding:10px}.summary-grade-column h3{margin:0 0 10px;font-size:14px;color:#245ccc}.summary-special-item{background:#fff;border-left:4px solid #f3943f;border-radius:8px;padding:9px;margin-top:8px;font-size:12px}.summary-special-item b{font-size:13px}.summary-special-item small{display:block;color:#6e7b91;margin-top:4px;line-height:1.45}@media(max-width:760px){.school-manager-grid,.special-controls{grid-template-columns:1fr}.school-manager-grid .full,.special-controls .full{grid-column:1}.school-filter{align-items:flex-start;flex-direction:column}.school-filter select{width:100%}.summary-grade-grid{grid-template-columns:repeat(6,155px)}}
     </style>`);
     document.head.insertAdjacentHTML('beforeend',`<style id="mealPlanningStyle">
-      .admin-feature-chooser{margin-bottom:18px}.admin-feature-chooser label{display:flex;align-items:center;gap:12px;font-weight:800}.admin-feature-chooser select{min-width:260px;border:1px solid #dce4f1;border-radius:8px;padding:10px;background:#fff;font:inherit}.meal-planning-layout{display:grid;grid-template-columns:minmax(0,1fr) 340px;gap:18px}.meal-plan-row{display:grid;grid-template-columns:minmax(150px,1.2fr) .55fr .75fr 1.2fr;gap:10px;align-items:center;border-top:1px solid #e5eaf2;padding:12px 9px}.meal-plan-row.header{background:#f8faff;color:#6e7b91;border:0;border-radius:8px;font-size:12px}.meal-plan-row.no-meal{opacity:.58;background:#f4f5f7;font-style:italic}.meal-plan-row.school-pack{background:#effbf6}.meal-plan-stats{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin:14px 0}.meal-plan-stat{border:1px solid #e5eaf2;border-radius:10px;padding:12px;background:#fff}.meal-plan-stat b{display:block;font-size:24px;margin-top:5px}.school-pack-panel{background:#fff;border:1px solid #e5eaf2;border-radius:15px;padding:20px;align-self:start}.school-pack-item{border-left:4px solid #14b88a;background:#f3fbf8;border-radius:8px;padding:10px;margin:8px 0;font-size:13px}.school-pack-item.cancelled{border-left-color:#9aa5b5;background:#f3f4f6;color:#6e7b91;font-style:italic}.special-meal-list{margin-top:18px;border-top:1px solid #e5eaf2;padding-top:15px}.special-meal-item{border-left:4px solid #f3943f;background:#fffaf2;border-radius:8px;padding:10px;margin:8px 0;font-size:13px}@media(max-width:960px){.meal-planning-layout{grid-template-columns:1fr}.meal-plan-row{grid-template-columns:1.2fr .65fr .8fr}.meal-plan-row>*:last-child{grid-column:1/-1}.admin-feature-chooser label{align-items:flex-start;flex-direction:column}.admin-feature-chooser select{width:100%}}
+      .admin-feature-chooser{margin-bottom:18px}.admin-feature-chooser label{display:flex;align-items:center;gap:12px;font-weight:800}.admin-feature-chooser select{min-width:260px;border:1px solid #dce4f1;border-radius:8px;padding:10px;background:#fff;font:inherit}.meal-planning-layout{display:grid;grid-template-columns:minmax(0,1fr) 340px;gap:18px}.meal-plan-row{display:grid;grid-template-columns:minmax(150px,1.2fr) .55fr .75fr 1.2fr;gap:10px;align-items:center;border-top:1px solid #e5eaf2;padding:12px 9px}.meal-plan-row.header{background:#f8faff;color:#6e7b91;border:0;border-radius:8px;font-size:12px}.meal-plan-row.no-meal{opacity:.58;background:#f4f5f7;font-style:italic}.meal-plan-row.school-pack{background:#effbf6}.meal-plan-stats{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin:14px 0}.meal-plan-stat{border:1px solid #e5eaf2;border-radius:10px;padding:12px;background:#fff}.meal-plan-stat b{display:block;font-size:24px;margin-top:5px}.school-pack-panel{background:#fff;border:1px solid #e5eaf2;border-radius:15px;padding:20px;align-self:start}.school-pack-item{border-left:4px solid #14b88a;background:#f3fbf8;border-radius:8px;padding:10px;margin:8px 0;font-size:13px}.school-pack-item.cancelled{border-left-color:#9aa5b5;background:#f3f4f6;color:#6e7b91;font-style:italic}.special-food-panel{border-top:1px solid #e5eaf2;margin-top:22px;padding-top:18px}.special-food-panel h3{margin:0 0 7px;font-size:17px}.special-food-item{border-left:4px solid #8b5cf6;background:#f7f3ff;border-radius:8px;padding:10px;margin:8px 0;font-size:13px}.special-food-name{color:#7c3aed;font-weight:800}.special-food-detail{color:#5b21b6;font-weight:700;margin-left:4px}.special-food-item.cancelled{border-left-color:#a7a0b0;background:#f3f4f6;color:#77707f;font-style:italic}.special-food-item.cancelled .special-food-name,.special-food-item.cancelled .special-food-detail{color:#796887}.special-meal-list{margin-top:18px;border-top:1px solid #e5eaf2;padding-top:15px}.special-meal-item{border-left:4px solid #f3943f;background:#fffaf2;border-radius:8px;padding:10px;margin:8px 0;font-size:13px}@media(max-width:960px){.meal-planning-layout{grid-template-columns:1fr}.meal-plan-row{grid-template-columns:1.2fr .65fr .8fr}.meal-plan-row>*:last-child{grid-column:1/-1}.admin-feature-chooser label{align-items:flex-start;flex-direction:column}.admin-feature-chooser select{width:100%}}
     </style>`);
   }
 
@@ -67,7 +78,8 @@
   function attendanceRow(student,kind){
     student.school=Array.isArray(student.school)?student.school:[false,false];
     student.care=Array.isArray(student.care)?student.care:[false,false];
-    const absent=isAbsent(student,typeof week==='string'?week:todayWeek());
+    const selectedDay=typeof week==='string'?week:todayWeek(),plan=planFor(student)?.[selectedDay]||{},stay=plan.status==='stay';
+    const absent=isAbsent(student,selectedDay);
     const schoolOK=schoolComplete(student),careOK=careComplete(student),schoolNeeded=needsSchoolAttendance(student),careNeeded=needsCareAttendance(student);
     const attendanceNeeded=kind==='school'?schoolNeeded:careNeeded;
     const blocked=kind==='care'&&!schoolSatisfied(student);
@@ -77,7 +89,7 @@
     const firstLabel=kind==='school'?(school?.transport_type==='van_uncle'?'Van Uncle':'老师'):'老师 A';
     const firstName=kind==='school'&&school?.carrier_name?`<small class="carrier-note">${html(school.carrier_name)}</small>`:'';
     let state=absent?'<span class="tag red">没有来托育</span>':!attendanceNeeded?(kind==='care'&&cameToCare(student)?'<span class="tag green">已来托育（免点名）</span>':`<span class="tag red">不需要${kind==='school'?'学校':'托育'}点名</span>`):done?'<span class="tag green">已确认</span>':blocked?'<span class="tag">等待学校确认</span>':'<span class="tag">待确认</span>';
-    const note=student.special?html(student.special.note||'—'):absent?'每周安排：没有来托育':student.diet?'特殊餐：'+html(student.diet):transportText(student);
+    const note=student.special?html(student.special.note||'—'):absent?'每周安排：没有来托育':stay?`${html(transportText(student))}<small class="carrier-note">备注：留校至 ${html(attendanceTimeFor(student,selectedDay)||'未填写')}</small>`:student.diet?'特殊餐：'+html(student.diet):html(transportText(student));
     const canSend=canNotifyArrival(student),send=window.whatsappNotificationButton?window.whatsappNotificationButton(student,canSend):`<button class="greenbtn" ${canSend?'':'disabled'} onclick="shareStudentWhatsapp('${html(student.id)}')">发信息通知</button>`;
     return `<div class="attendance-row ${done?'confirmed':''} ${absent||!attendanceNeeded?'unavailable':''}" data-student-id="${html(student.id)}" data-school-id="${html(student.school_id||'')}" data-absent="${absent}"><div class="student">${html(student.name)}<small>${html(student.grade)} · ${html(student.meal)} · ${html(school?.name||'学校未设置')}</small></div><label class="check"><input type="checkbox" ${student[kind][0]?'checked':''} ${disabled?'disabled':''} onchange="toggle('${html(student.id)}','${kind}',0,this.checked)">${firstLabel}${firstName}</label><label class="check"><input type="checkbox" ${student[kind][1]?'checked':''} ${disabled||onePerson?'disabled':''} onchange="toggle('${html(student.id)}','${kind}',1,this.checked)">${onePerson?'不需要':'老师 B'}</label><div>${state}</div><div>${kind==='school'?note:send}</div></div>`;
   }
@@ -102,6 +114,17 @@
     if($('rateStat'))$('rateStat').textContent=(todayActive.length?Math.round(todayArrived/todayActive.length*100):0)+'%';
   }
 
+  function annotateAttendanceTimes(){
+    const selectedDay=typeof week==='string'?week:todayWeek();
+    ['schoolTimes','careTimes'].forEach(id=>{
+      $(id)?.querySelectorAll('button').forEach(button=>{
+        const value=button.textContent.trim();
+        const hasStay=students.some(student=>planFor(student)?.[selectedDay]?.status==='stay'&&attendanceTimeFor(student,selectedDay)===value);
+        if(hasStay)button.textContent=`${value}（留校）`;
+      });
+    });
+  }
+
   function installAttendance(){
     window.row=attendanceRow;
     window.toggle=(id,kind,index,value)=>{
@@ -115,7 +138,7 @@
       window.renderSpecial?.();
     };
     const base=window.renderAttendance;
-    window.renderAttendance=()=>{base?.();ensureAttendanceFilters();postFilterAttendance()};
+    window.renderAttendance=()=>{applyEffectiveSchedules();base?.();ensureAttendanceFilters();postFilterAttendance();annotateAttendanceTimes()};
     window.renderAttendance();
   }
 
@@ -178,10 +201,16 @@
     }
     form.querySelectorAll('.return-status').forEach(select=>{if(!select.querySelector('option[value="absent"]'))select.insertAdjacentHTML('beforeend','<option value="absent">没有来托育</option>')});
     form.querySelectorAll('[name="bring_meal"]').forEach(select=>{if(!select.querySelector('option[value="return_meal"]'))select.insertAdjacentHTML('beforeend','<option value="return_meal">回来托育吃饭</option>');const label=select.closest('label');if(label?.firstChild?.nodeType===Node.TEXT_NODE)label.firstChild.textContent='留校饭餐安排'});
+    form.querySelectorAll('.day-card').forEach(card=>{
+      const status=card.querySelector('[name="return_status"]'),returnInput=card.querySelector('[name="return_time"]'),returnLabel=returnInput?.closest('label'),meal=card.querySelector('.bring-meal');
+      const update=()=>{const stay=status?.value==='stay';if(returnInput){returnInput.disabled=stay;returnInput.setAttribute('aria-disabled',String(stay));returnInput.title=stay?'留校时不使用回托时间；点名会使用下方“留校到几点”。':''}returnLabel?.classList.toggle('return-time-disabled',stay);if(meal)meal.style.display=stay?'block':'none'};
+      if(status){status.onchange=update;update()}
+    });
     const hiddenId=form.elements.id.value,student=students.find(s=>String(s.id)===String(hiddenId));
+    if(student){const savedPlan=planFor(student);form.querySelectorAll('.day-card').forEach(card=>{const stayInput=card.querySelector('[name="stay_end"]'),value=savedPlan?.[card.dataset.day]?.stayEnd;if(stayInput&&value)stayInput.value=value})}
     refreshStudentSchoolOptions(student?.school_id||form.elements.school_id.value);
     const section=[...form.querySelectorAll('.easy-section')].find(x=>x.textContent.includes('回托育'));
-    const help=section?.querySelector('p');if(help)help.textContent='每天选择“正常回托育”、“留校”或“没有来托育”。若留校，可选择需要带饭、不需要带饭或回来托育吃饭。';
+    const help=section?.querySelector('p');if(help)help.textContent='每天选择“正常回托育”、“留校”或“没有来托育”。选择留校后，回托时间会停用，学校与托育点名改用“留校到几点”。';
     if(!form.dataset.schoolFeatures){
       form.dataset.schoolFeatures='1';const oldSubmit=form.onsubmit;
       form.onsubmit=async event=>{
@@ -191,9 +220,10 @@
         const weekly={};form.querySelectorAll('.day-card').forEach(card=>{weekly[card.dataset.day]={time:card.querySelector('[name="return_time"]').value,status:card.querySelector('[name="return_status"]').value,bringMeal:card.querySelector('[name="bring_meal"]').value,stayEnd:card.querySelector('[name="stay_end"]')?.value||''}});
         await oldSubmit?.call(form,event);
         const student=students.find(s=>(oldId&&String(s.id)===String(oldId))||(!oldId&&s.name===name));if(!student)return;
-        student.school_id=schoolId;student.weekly_plan=weekly;
+        const schedule=weekDays.map(day=>`${day} ${weekly[day].status==='stay'?(weekly[day].stayEnd||'17:00'):weekly[day].time}`).join('；');
+        student.school_id=schoolId;student.weekly_plan=weekly;student.schedule=schedule;
         const all=readPlans();all[String(student.id)]=weekly;localStorage.setItem('fuchengStudentReturnPlans',JSON.stringify(all));saveLocal();
-        if(window.cloud){const result=await cloud.from('students').update({school_id:schoolId,weekly_plan:weekly}).eq('id',String(student.id));if(result.error)return alert('学生已保存，但学校／每周安排同步失败：'+result.error.message)}
+        if(window.cloud){const result=await cloud.from('students').update({school_id:schoolId,weekly_plan:weekly,schedule}).eq('id',String(student.id));if(result.error)return alert('学生已保存，但学校／每周安排同步失败：'+result.error.message)}
         refreshSchoolUI();
       };
     }
@@ -299,7 +329,7 @@
     const plan=planFor(student)?.[day]||{};
     return plan.status==='stay'&&plan.bringMeal==='yes';
   }
-  function mealPlanningMarkup(){return `<div class="meal-planning-layout"><section class="card"><h2 class="section-title">星期一至五学生饭量</h2><p class="muted">先选星期、年段与年级。灰色斜体代表这一天不用包饭。</p><div class="week-tabs" id="mealPlanWeeks"></div><div class="week-tabs" id="mealPlanStages"></div><div class="time-tabs" id="mealPlanGrades"></div><div class="meal-plan-stats" id="mealPlanStats"></div><div id="mealPlanStudents"></div><section class="special-meal-list"><h3 class="section-title">特殊情况／不用包饭</h3><div id="mealPlanSpecials"></div></section></section><aside class="school-pack-panel"><h2 class="section-title">学校要包的饭</h2><p class="muted">只显示学生资料中设为“留校＋需要带饭”的学生。</p><div class="week-tabs school-pack-weeks" id="schoolPackWeeks"></div><p class="muted" id="schoolPackDayLabel"></p><div id="schoolPackMeals"></div></aside></div>`}
+  function mealPlanningMarkup(){return `<div class="meal-planning-layout"><section class="card"><h2 class="section-title">星期一至五学生饭量</h2><p class="muted">先选星期、年段与年级。灰色斜体代表这一天不用包饭。</p><div class="week-tabs" id="mealPlanWeeks"></div><div class="week-tabs" id="mealPlanStages"></div><div class="time-tabs" id="mealPlanGrades"></div><div class="meal-plan-stats" id="mealPlanStats"></div><div id="mealPlanStudents"></div><section class="special-meal-list"><h3 class="section-title">特殊情况／不用包饭</h3><div id="mealPlanSpecials"></div></section></section><aside class="school-pack-panel"><h2 class="section-title">学校要包的饭</h2><p class="muted">只显示学生资料中设为“留校＋需要带饭”的学生。</p><div class="week-tabs school-pack-weeks" id="schoolPackWeeks"></div><p class="muted" id="schoolPackDayLabel"></p><div id="schoolPackMeals"></div><section class="special-food-panel"><h3>特殊饭</h3><p class="muted" id="specialFoodDayLabel"></p><div id="specialFoodMeals"></div></section></aside></div>`}
   function installMealPlanningPage(){
     const page=$('special'),nav=document.querySelector('[data-page="special"]');if(!page||!nav)return;
     if(!page.dataset.mealPlanning){page.dataset.mealPlanning='1';page.innerHTML=mealPlanningMarkup()}
@@ -328,6 +358,9 @@
     const schoolMeals=students.filter(student=>needsSchoolPackedMeal(student,mealPlanDay)).map(student=>({student,decision:mealDecision(student,mealPlanDay)}));
     $('schoolPackDayLabel').textContent=`${mealPlanDay} · 共 ${schoolMeals.filter(item=>item.decision.needed).length} 份`;
     $('schoolPackMeals').innerHTML=schoolMeals.length?schoolMeals.map(({student,decision})=>`<div class="school-pack-item ${decision.needed?'':'cancelled'}"><b>${html(student.name)} · ${html(student.grade)} · ${html(student.meal)}</b><br>${decision.needed?'留校，需要带饭':`不用包饭：${html(decision.reason||'特殊情况')}`}</div>`).join(''):'<p class="muted">这个星期没有设置“留校＋需要带饭”的学生。</p>';
+    const specialFoods=students.map(student=>({student,base:baseMealDecision(student,mealPlanDay),decision:mealDecision(student,mealPlanDay)})).filter(item=>String(item.student.diet||'').trim()&&item.base.needed);
+    $('specialFoodDayLabel').textContent=`${mealPlanDay} · 特殊饭 ${specialFoods.filter(item=>item.decision.needed).length} 份`;
+    $('specialFoodMeals').innerHTML=specialFoods.length?specialFoods.map(({student,decision})=>`<div class="special-food-item ${decision.needed?'':'cancelled'}"><span class="special-food-name">${html(student.name)}</span><span class="special-food-detail">（${html(student.diet)}）</span><br><small>${html(student.grade)} · ${html(student.meal)}${decision.needed?'':` · 不用准备：${html(decision.reason||'特殊情况')}`}</small></div>`).join(''):'<p class="muted">这个星期没有需要准备的特殊饭。</p>';
   }
 
   function renderSpecialFixed(){
