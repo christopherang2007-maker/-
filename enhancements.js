@@ -75,7 +75,7 @@
     $('stayDays').innerHTML=returnDays.map(d=>button(d,null,d===selectedDay)).join('');
     $('stayDays').querySelectorAll('button').forEach(b=>b.onclick=()=>{selectedDay=b.dataset.value;selectedRange='';draw()});
     const plans=readPlans(),stay=students.map(student=>({student,plan:plans[String(student.id)]?.[selectedDay]})).filter(x=>x.plan?.status==='stay');
-    $('stayResult').innerHTML=stay.length?stay.map(({student,plan})=>`<div class="emergency"><b>${esc(student.name)}</b> · ${esc(student.grade)}<br>${plan.bringMeal==='yes'?'🍱 需要带饭':'无需带饭'}<br><span class="muted">留校到：${esc(plan.stayEnd||'未填写')}</span></div>`).join(''):'<p class="muted">${esc(selectedDay)}没有学生留校。</p>';
+    $('stayResult').innerHTML=stay.length?stay.map(({student,plan})=>`<div class="emergency"><b>${esc(student.name)}</b> · ${esc(student.grade)}<br>${plan.bringMeal==='yes'?'🍱 需要带饭':plan.bringMeal==='return_meal'?'🍽️ 回来托育吃饭':'无需带饭'}<br><span class="muted">留校到：${esc(plan.stayEnd||'未填写')}</span></div>`).join(''):'<p class="muted">${esc(selectedDay)}没有学生留校。</p>';
   }
   window.addEventListener('load',()=>setTimeout(install,2200));
 })();

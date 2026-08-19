@@ -335,7 +335,7 @@
     if(window.cloudUser&&typeof pullCloud==='function'){
       await pullCloud();
     }else{
-      students.forEach(student=>{student.school=[false,false];student.care=[false,false];student.mealTaken=false;student.notified=false;student.special=null});
+      students.forEach(student=>{student.school=[false,false];student.care=[false,false];student.mealTaken=false;student.notified=false});
       if(typeof localSave==='function')localSave();
       if(typeof window.renderAll==='function')window.renderAll();
     }

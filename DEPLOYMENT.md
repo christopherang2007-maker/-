@@ -20,8 +20,9 @@
 
    - `20260817131237_add_schools_and_student_weekly_plans.sql`
    - `20260819033235_add_special_situation_controls.sql`
+   - `20260819162101_persist_special_situations.sql`
 
-   这两份 SQL 只新增学校、学生每周安排及今日特殊情况控制字段，不会清除学生资料。
+   这些 SQL 新增学校、学生每周安排与特殊情况控制字段。最后一份迁移会把同一学生重复的旧特殊情况合并为最新一条；不会删除学生资料。特殊情况之后会持续保留，直到老师手动删除。
 4. 在 Supabase Authentication 设置关闭公开注册（Allow new users to sign up），老师账号由管理员预先建立和批准。
 5. Vercel 环境变量使用：
 

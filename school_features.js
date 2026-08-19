@@ -31,6 +31,9 @@
     document.head.insertAdjacentHTML('beforeend',`<style id="schoolFeatureStyle">
       .school-filter{display:flex;align-items:center;gap:10px;margin:12px 0;color:#536178;font-weight:700}.school-filter select{min-width:230px;border:1px solid #dce4f1;border-radius:8px;padding:9px 11px;background:#fff;font:inherit}.school-manager{margin-top:20px;border-top:1px solid #e5eaf2;padding-top:18px}.school-manager-grid{display:grid;grid-template-columns:1fr 1fr;gap:9px}.school-manager-grid label{font-size:12px;font-weight:700;color:#536178}.school-manager-grid input,.school-manager-grid select{width:100%;margin-top:5px;border:1px solid #dce4f1;border-radius:8px;padding:8px;font:inherit}.school-manager-grid .full{grid-column:1/-1}.school-entry{border-top:1px solid #e5eaf2;padding:10px 0}.school-entry small{display:block;color:#6e7b91;margin:3px 0}.attendance-row[data-absent="true"]{opacity:.62;font-style:italic;background:#f5f6f8}.daily-record-form{display:grid;gap:12px}.daily-record-form input,.daily-record-form textarea{width:100%;border:1px solid #dce4f1;border-radius:8px;padding:10px;margin-top:6px;font:inherit}.daily-record-form textarea{min-height:110px;resize:vertical}.daily-record-item{border-left:4px solid #3478f6}.carrier-note{display:block;color:#6e7b91;font-size:11px;margin-top:3px}.special-controls{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}.special-controls label{font-size:13px;color:#536178}.special-controls input,.special-controls select,.special-controls textarea{width:100%;border:1px solid #dce4f1;border-radius:8px;padding:9px;margin-top:5px;font:inherit}.special-controls textarea{min-height:76px;resize:vertical}.special-controls .full{grid-column:1/-1}.special-statuses{display:flex;flex-wrap:wrap;gap:5px;margin:8px 0}.summary-grade-grid{display:grid;grid-template-columns:repeat(6,minmax(155px,1fr));gap:10px;overflow-x:auto;padding-bottom:6px}.summary-grade-column{min-height:190px;background:#f8faff;border:1px solid #e5eaf2;border-radius:11px;padding:10px}.summary-grade-column h3{margin:0 0 10px;font-size:14px;color:#245ccc}.summary-special-item{background:#fff;border-left:4px solid #f3943f;border-radius:8px;padding:9px;margin-top:8px;font-size:12px}.summary-special-item b{font-size:13px}.summary-special-item small{display:block;color:#6e7b91;margin-top:4px;line-height:1.45}@media(max-width:760px){.school-manager-grid,.special-controls{grid-template-columns:1fr}.school-manager-grid .full,.special-controls .full{grid-column:1}.school-filter{align-items:flex-start;flex-direction:column}.school-filter select{width:100%}.summary-grade-grid{grid-template-columns:repeat(6,155px)}}
     </style>`);
+    document.head.insertAdjacentHTML('beforeend',`<style id="mealPlanningStyle">
+      .admin-feature-chooser{margin-bottom:18px}.admin-feature-chooser label{display:flex;align-items:center;gap:12px;font-weight:800}.admin-feature-chooser select{min-width:260px;border:1px solid #dce4f1;border-radius:8px;padding:10px;background:#fff;font:inherit}.meal-planning-layout{display:grid;grid-template-columns:minmax(0,1fr) 340px;gap:18px}.meal-plan-row{display:grid;grid-template-columns:minmax(150px,1.2fr) .55fr .75fr 1.2fr;gap:10px;align-items:center;border-top:1px solid #e5eaf2;padding:12px 9px}.meal-plan-row.header{background:#f8faff;color:#6e7b91;border:0;border-radius:8px;font-size:12px}.meal-plan-row.no-meal{opacity:.58;background:#f4f5f7;font-style:italic}.meal-plan-row.school-pack{background:#effbf6}.meal-plan-stats{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin:14px 0}.meal-plan-stat{border:1px solid #e5eaf2;border-radius:10px;padding:12px;background:#fff}.meal-plan-stat b{display:block;font-size:24px;margin-top:5px}.school-pack-panel{background:#fff;border:1px solid #e5eaf2;border-radius:15px;padding:20px;align-self:start}.school-pack-item{border-left:4px solid #14b88a;background:#f3fbf8;border-radius:8px;padding:10px;margin:8px 0;font-size:13px}.school-pack-item.cancelled{border-left-color:#9aa5b5;background:#f3f4f6;color:#6e7b91;font-style:italic}.special-meal-list{margin-top:18px;border-top:1px solid #e5eaf2;padding-top:15px}.special-meal-item{border-left:4px solid #f3943f;background:#fffaf2;border-radius:8px;padding:10px;margin:8px 0;font-size:13px}@media(max-width:960px){.meal-planning-layout{grid-template-columns:1fr}.meal-plan-row{grid-template-columns:1.2fr .65fr .8fr}.meal-plan-row>*:last-child{grid-column:1/-1}.admin-feature-chooser label{align-items:flex-start;flex-direction:column}.admin-feature-chooser select{width:100%}}
+    </style>`);
   }
 
   function schoolOptions(selected='',includeBlank=true){
@@ -174,10 +177,11 @@
       form.elements.name.closest('label')?.insertAdjacentHTML('afterend',`<label>学校 *<select required name="school_id" id="studentSchoolSelect"></select></label>`);
     }
     form.querySelectorAll('.return-status').forEach(select=>{if(!select.querySelector('option[value="absent"]'))select.insertAdjacentHTML('beforeend','<option value="absent">没有来托育</option>')});
+    form.querySelectorAll('[name="bring_meal"]').forEach(select=>{if(!select.querySelector('option[value="return_meal"]'))select.insertAdjacentHTML('beforeend','<option value="return_meal">回来托育吃饭</option>');const label=select.closest('label');if(label?.firstChild?.nodeType===Node.TEXT_NODE)label.firstChild.textContent='留校饭餐安排'});
     const hiddenId=form.elements.id.value,student=students.find(s=>String(s.id)===String(hiddenId));
     refreshStudentSchoolOptions(student?.school_id||form.elements.school_id.value);
     const section=[...form.querySelectorAll('.easy-section')].find(x=>x.textContent.includes('回托育'));
-    const help=section?.querySelector('p');if(help)help.textContent='每天选择“正常回托育”、“留校”或“没有来托育”。若留校，会出现是否需要带饭。';
+    const help=section?.querySelector('p');if(help)help.textContent='每天选择“正常回托育”、“留校”或“没有来托育”。若留校，可选择需要带饭、不需要带饭或回来托育吃饭。';
     if(!form.dataset.schoolFeatures){
       form.dataset.schoolFeatures='1';const oldSubmit=form.onsubmit;
       form.onsubmit=async event=>{
@@ -202,6 +206,22 @@
     const oldEdit=window.easyEditStudent;
     if(oldEdit)window.easyEditStudent=id=>{oldEdit(id);setTimeout(()=>{ensureStudentForm();refreshStudentSchoolOptions(students.find(s=>String(s.id)===String(id))?.school_id||'')},0)};
     ensureStudentForm();
+  }
+
+  function setAdminFeature(value){
+    const admin=$('admin');if(!admin)return;
+    admin.querySelectorAll('[data-admin-normal="true"]').forEach(element=>element.classList.toggle('hidden',value==='special'));
+    $('adminSpecialPanel')?.classList.toggle('hidden',value!=='special');
+    if(value==='special')renderSpecialFixed();
+  }
+  function installAdminFeatureChooser(){
+    const admin=$('admin');if(!admin)return;
+    if(!$('adminFeatureChooser')){
+      [...admin.children].forEach(child=>child.dataset.adminNormal='true');
+      admin.insertAdjacentHTML('afterbegin',`<div id="adminFeatureChooser" class="card admin-feature-chooser"><label>后台信息功能<select id="adminFeatureSelect"><option value="students">学生资料与系统设置</option><option value="special">特殊情况登记</option></select></label></div><section id="adminSpecialPanel" class="card hidden"></section>`);
+    }
+    $('adminFeatureSelect').onchange=event=>setAdminFeature(event.target.value);
+    setAdminFeature($('adminFeatureSelect').value);
   }
 
   let dailyRecords=[];
@@ -237,7 +257,7 @@
   };
 
   let editingSpecialStudentId='';
-  function specialFormMarkup(){return `<h2 class="section-title">今日特殊情况</h2><p class="muted">选择学生后，可分别决定今天是否需要学校点名、托育点名、吃饭及是否有来托育。</p><form id="specialFeatureForm"><div class="special-controls"><label>搜索／选择学生 *<input required id="specialStudent" list="specialFeatureStudents" placeholder="输入学生名字"></label><datalist id="specialFeatureStudents"></datalist><label>年级<input id="specialGrade" readonly placeholder="选择学生后自动显示"></label><label>情况 *<select id="specialType"><option value="生病没来">生病没来</option><option value="其他">其他</option></select></label><label class="full">备注<textarea id="specialNote" placeholder="填写今天的特殊情况"></textarea></label><label>需要学校点名<select id="specialSchoolRequired"><option value="false">不需要</option><option value="true">需要</option></select></label><label>需要托育点名<select id="specialCareRequired"><option value="false">不需要</option><option value="true">需要</option></select></label><label>需要吃饭<select id="specialMealRequired"><option value="false">不需要</option><option value="true">需要</option></select></label><label>有没有来托育<select id="specialCameToCare"><option value="false">没有来托育</option><option value="true">有来托育</option></select></label></div><button class="save" id="specialSaveButton">登记特殊情况</button> <button type="button" class="outline hidden" id="cancelSpecialEdit">取消修改</button></form><div id="specialRecords" style="margin-top:17px"></div>`}
+  function specialFormMarkup(){return `<h2 class="section-title">特殊情况登记</h2><p class="muted">登记后会持续保留，不会在凌晨自动清除；情况结束时请在下方点击“删除”。</p><form id="specialFeatureForm"><div class="special-controls"><label>搜索／选择学生 *<input required id="specialStudent" list="specialFeatureStudents" placeholder="输入学生名字"></label><datalist id="specialFeatureStudents"></datalist><label>年级<input id="specialGrade" readonly placeholder="选择学生后自动显示"></label><label>情况 *<select id="specialType"><option value="生病没来">生病没来</option><option value="其他">其他</option></select></label><label class="full">备注<textarea id="specialNote" placeholder="填写特殊情况原因"></textarea></label><label>需要学校点名<select id="specialSchoolRequired"><option value="false">不需要</option><option value="true">需要</option></select></label><label>需要托育点名<select id="specialCareRequired"><option value="false">不需要</option><option value="true">需要</option></select></label><label>需要吃饭<select id="specialMealRequired"><option value="false">不需要</option><option value="true">需要</option></select></label><label>有没有来托育<select id="specialCameToCare"><option value="false">没有来托育</option><option value="true">有来托育</option></select></label></div><button class="save" id="specialSaveButton">登记特殊情况</button> <button type="button" class="outline hidden" id="cancelSpecialEdit">取消修改</button></form><div id="specialRecords" style="margin-top:17px"></div>`}
   function applySpecialDefaults(force=false){
     if(!$('specialType')||(!force&&editingSpecialStudentId))return;
     const sick=['病假','生病没来'].includes($('specialType').value);
@@ -245,7 +265,7 @@
   }
   function updateSpecialGrade(){const name=String($('specialStudent')?.value||'').trim(),student=students.find(s=>s.name===name||String(s.id)===name);if($('specialGrade'))$('specialGrade').value=student?.grade||''}
   function installSpecialForm(){
-    const card=$('special')?.querySelector('.two-col > .card:first-child');if(!card)return;
+    const card=$('adminSpecialPanel');if(!card)return;
     if(!$('specialFeatureForm'))card.innerHTML=specialFormMarkup();
     $('specialFeatureStudents').innerHTML=students.map(s=>`<option value="${html(s.name)}">${html(s.grade)} · ${html(schoolFor(s)?.name||'学校未设置')}</option>`).join('');
     if($('specialFeatureForm').dataset.bound)return;
@@ -259,23 +279,63 @@
     const gradeList=['一年级','二年级','三年级','四年级','五年级','六年级'];
     board.innerHTML=gradeList.map(grade=>{const records=specials.filter(x=>students.find(s=>String(s.id)===String(x.student_id)||s.name===x.name)?.grade===grade);return `<section class="summary-grade-column"><h3>${grade}</h3>${records.length?records.map(x=>`<div class="summary-special-item"><b>${html(x.name)} · ${html(specialTypeLabel(x.type))}</b><small>${html(x.note||'没有备注')}</small><small>学校${x.school_attendance_required?'需点名':'免点名'} · 托育${x.care_attendance_required?'需点名':'免点名'} · ${x.meal_required?'要吃饭':'不吃饭'} · ${x.came_to_care?'有来托育':'没来托育'}</small></div>`).join(''):'<p class="muted">暂无</p>'}</section>`}).join('');
   }
+
+  let mealPlanDay=weekDays.includes(todayWeek())?todayWeek():'星期一',mealPlanStage='低年段',mealPlanGrade='全部';
+  const lowGrades=['一年级','二年级','三年级'];
+  function baseMealDecision(student,day){
+    const plan=planFor(student)?.[day]||{},status=plan.status||'return',bringMeal=plan.bringMeal||'no';
+    if(status==='absent')return {needed:false,label:'没有来托育',reason:'每周安排：没有来托育',mode:''};
+    if(status==='stay'&&bringMeal==='no')return {needed:false,label:'留校，不需要带饭',reason:'每周安排：不需要带饭',mode:''};
+    if(status==='stay'&&bringMeal==='yes')return {needed:true,label:'需要带饭',reason:'',mode:'送到学校'};
+    if(status==='stay'&&bringMeal==='return_meal')return {needed:true,label:'回来托育吃饭',reason:'',mode:'回托育吃'};
+    return {needed:true,label:'正常回托育吃饭',reason:'',mode:'回托育吃'};
+  }
+  function mealDecision(student,day){
+    const base=baseMealDecision(student,day);
+    if(student.special&&!needsMeal(student))return {...base,needed:false,label:'特殊情况：不用包饭',reason:student.special.note||specialTypeLabel(student.special.type),cancelledBySpecial:base.needed};
+    return {...base,cancelledBySpecial:false};
+  }
+  function mealPlanningMarkup(){return `<div class="meal-planning-layout"><section class="card"><h2 class="section-title">星期一至五学生饭量</h2><p class="muted">先选星期、年段与年级。灰色斜体代表这一天不用包饭。</p><div class="week-tabs" id="mealPlanWeeks"></div><div class="week-tabs" id="mealPlanStages"></div><div class="time-tabs" id="mealPlanGrades"></div><div class="meal-plan-stats" id="mealPlanStats"></div><div id="mealPlanStudents"></div><section class="special-meal-list"><h3 class="section-title">特殊情况／不用包饭</h3><div id="mealPlanSpecials"></div></section></section><aside class="school-pack-panel"><h2 class="section-title">学校要包的饭</h2><p class="muted" id="schoolPackDayLabel"></p><div id="schoolPackMeals"></div></aside></div>`}
+  function installMealPlanningPage(){
+    const page=$('special'),nav=document.querySelector('[data-page="special"]');if(!page||!nav)return;
+    if(!page.dataset.mealPlanning){page.dataset.mealPlanning='1';page.innerHTML=mealPlanningMarkup()}
+    const number=nav.querySelector('.num')?.textContent||'08';nav.innerHTML=`<b class="num">${html(number)}</b> 饭量安排`;
+    renderMealPlanning();
+  }
+  function filterMealStudents(){const grades=mealPlanStage==='低年段'?lowGrades:['四年级','五年级','六年级'];return students.filter(student=>(mealPlanGrade==='全部'?grades.includes(student.grade):student.grade===mealPlanGrade))}
+  function renderMealPlanning(){
+    if(!$('mealPlanWeeks'))return;
+    $('mealPlanWeeks').innerHTML=weekDays.map(day=>`<button class="${day===mealPlanDay?'active':''}" data-day="${html(day)}">${html(day)}</button>`).join('');
+    $('mealPlanWeeks').querySelectorAll('button').forEach(button=>button.onclick=()=>{mealPlanDay=button.dataset.day;renderMealPlanning()});
+    $('mealPlanStages').innerHTML=['低年段','高年段'].map(stage=>`<button class="${stage===mealPlanStage?'active':''}" data-stage="${stage}">${stage}</button>`).join('');
+    $('mealPlanStages').querySelectorAll('button').forEach(button=>button.onclick=()=>{mealPlanStage=button.dataset.stage;mealPlanGrade='全部';renderMealPlanning()});
+    const stageGrades=mealPlanStage==='低年段'?lowGrades:['四年级','五年级','六年级'];
+    $('mealPlanGrades').innerHTML=['全部',...stageGrades].map(grade=>`<button class="${grade===mealPlanGrade?'active':''}" data-grade="${grade}">${grade}</button>`).join('');
+    $('mealPlanGrades').querySelectorAll('button').forEach(button=>button.onclick=()=>{mealPlanGrade=button.dataset.grade;renderMealPlanning()});
+    const visible=filterMealStudents(),decisions=visible.map(student=>({student,decision:mealDecision(student,mealPlanDay)})),meals=['小饭','中饭','大饭'];
+    $('mealPlanStats').innerHTML=meals.map(meal=>{const count=decisions.filter(item=>item.decision.needed&&item.student.meal===meal).length;return `<div class="meal-plan-stat"><small>${meal}</small><b>${count} 份</b></div>`}).join('');
+    $('mealPlanStudents').innerHTML='<div class="meal-plan-row header"><span>学生</span><span>年级</span><span>饭量</span><span>安排</span></div>'+decisions.map(({student,decision})=>`<div class="meal-plan-row ${decision.needed?(decision.mode==='送到学校'?'school-pack':''):'no-meal'}"><b>${html(student.name)}</b><span>${html(student.grade)}</span><span>${html(student.meal)}</span><span>${html(decision.label)}${decision.reason?`<small class="carrier-note">${html(decision.reason)}</small>`:''}</span></div>`).join('');
+    const specialNoMeal=decisions.filter(item=>item.student.special&&!item.decision.needed);
+    $('mealPlanSpecials').innerHTML=specialNoMeal.length?specialNoMeal.map(({student,decision})=>`<div class="special-meal-item"><b>${html(student.name)} · ${html(student.grade)} · ${html(student.meal)}</b><br>${html(decision.reason||specialTypeLabel(student.special.type))}</div>`).join(''):'<p class="muted">这个筛选没有特殊情况／不用包饭的学生。</p>';
+    const schoolMeals=students.map(student=>({student,base:baseMealDecision(student,mealPlanDay),decision:mealDecision(student,mealPlanDay)})).filter(item=>item.base.needed);
+    $('schoolPackDayLabel').textContent=`${mealPlanDay} · 共 ${schoolMeals.filter(item=>item.decision.needed).length} 份`;
+    $('schoolPackMeals').innerHTML=schoolMeals.length?schoolMeals.map(({student,decision})=>`<div class="school-pack-item ${decision.needed?'':'cancelled'}"><b>${html(student.name)} · ${html(student.grade)} · ${html(student.meal)}</b><br>${decision.needed?html(decision.label):`不用包饭：${html(decision.reason||'特殊情况')}`}</div>`).join(''):'<p class="muted">这个星期没有需要准备的饭。</p>';
+  }
+
   function renderSpecialFixed(){
     installSpecialForm();
-    const active=students.filter(s=>!isAbsent(s,todayWeek())&&needsMeal(s)),meals=['小饭','中饭','大饭'],lowGrades=['一年级','二年级','三年级'];
     if($('specialFeatureStudents'))$('specialFeatureStudents').innerHTML=students.map(s=>`<option value="${html(s.name)}">${html(s.grade)} · ${html(schoolFor(s)?.name||'学校未设置')}</option>`).join('');
-    if($('mealStats'))$('mealStats').innerHTML=meals.map(meal=>{const low=active.filter(s=>s.meal===meal&&lowGrades.includes(s.grade)).length,high=active.filter(s=>s.meal===meal&&!lowGrades.includes(s.grade)).length;return `<div class="meal"><small>${meal}</small><b>${low+high} 份</b><small>低年段 ${low} · 高年段 ${high}</small></div>`}).join('');
-    const diets=active.filter(s=>s.diet);if($('dietList'))$('dietList').innerHTML=diets.length?diets.map(s=>`<div class="emergency"><b>${html(s.name)}</b> · ${html(s.grade)}<br>${html(s.meal)}：${html(s.diet)}</div>`).join(''):'今天没有特殊餐食要求。';
     if($('specialRecords'))$('specialRecords').innerHTML=specials.length?specials.map((x,index)=>`<div class="emergency"><b>${html(x.name)} · ${html(students.find(s=>String(s.id)===String(x.student_id)||s.name===x.name)?.grade||'年级未设置')} · ${html(specialTypeLabel(x.type))}</b><br>${html(x.note||'没有备注')}<div class="special-statuses">${statusTag('学校点名',x.school_attendance_required)}${statusTag('托育点名',x.care_attendance_required)}${statusTag('吃饭',x.meal_required,'需要','不需要')}${statusTag('来托育',x.came_to_care,'有来','没来')}</div><button class="outline" onclick="editSpecial(${index})">调整</button> <button class="outline" onclick="cancelSpecial(${index})">删除</button></div>`).join(''):'<p class="muted">尚未登记特殊情况。</p>';
-    renderSummarySpecialBoard();
+    renderSummarySpecialBoard();renderMealPlanning();
   }
   window.addSpecial=async()=>{
     const value=String($('specialStudent')?.value||'').trim(),student=students.find(s=>String(s.id)===value||s.name===value),id=String(student?.id||''),type=$('specialType').value,note=$('specialNote').value.trim()||type,controls={school_attendance_required:boolField('specialSchoolRequired'),care_attendance_required:boolField('specialCareRequired'),meal_required:boolField('specialMealRequired'),came_to_care:boolField('specialCameToCare')};if(!student){$('specialRecords').innerHTML='<p class="muted" style="color:#b3261e">请从提示名单选择正确的学生姓名。</p>';return}
-    if(window.cloud){await cloud.from('special_records').delete().eq('record_date',today()).eq('student_id',id);const result=await cloud.from('special_records').insert({record_date:today(),student_id:id,type,note,...controls}).select().single();if(result.error){$('specialRecords').innerHTML=`<p class="muted" style="color:#b3261e">特殊情况保存失败：${html(result.error.message)}</p>`;return}specials=specials.filter(x=>String(x.student_id||students.find(s=>s.name===x.name)?.id)!==id);specials.push({id:result.data.id,student_id:id,name:student.name,type,note,...controls});await cloud.from('attendance').upsert({attendance_date:today(),student_id:id,meal_taken:controls.meal_required?!!student.mealTaken:false})}else{specials=specials.filter(x=>String(x.student_id||students.find(s=>s.name===x.name)?.id)!==id);specials.push({student_id:id,name:student.name,type,note,...controls})}
+    if(window.cloud){await cloud.from('special_records').delete().eq('student_id',id);const result=await cloud.from('special_records').insert({record_date:today(),student_id:id,type,note,...controls}).select().single();if(result.error){$('specialRecords').innerHTML=`<p class="muted" style="color:#b3261e">特殊情况保存失败：${html(result.error.message)}</p>`;return}specials=specials.filter(x=>String(x.student_id||students.find(s=>s.name===x.name)?.id)!==id);specials.push({id:result.data.id,record_date:result.data.record_date,student_id:id,name:student.name,type,note,...controls});await cloud.from('attendance').upsert({attendance_date:today(),student_id:id,meal_taken:controls.meal_required?!!student.mealTaken:false})}else{specials=specials.filter(x=>String(x.student_id||students.find(s=>s.name===x.name)?.id)!==id);specials.push({record_date:today(),student_id:id,name:student.name,type,note,...controls})}
     student.special={type,note,...controls};if(!controls.meal_required)student.mealTaken=false;saveLocal();resetSpecialForm();renderSpecialFixed();renderMealFixed();window.renderAttendance?.();
   };
   window.cancelSpecial=async index=>{
     const record=specials[index];if(!record)return;const student=students.find(s=>String(s.id)===String(record.student_id)||s.name===record.name);
-    if(window.cloud){let query=cloud.from('special_records').delete();query=record.id?query.eq('id',record.id):query.eq('record_date',today()).eq('student_id',String(student?.id||record.student_id));const result=await query;if(result.error)return alert('取消特殊情况失败：'+result.error.message)}
+    if(window.cloud){let query=cloud.from('special_records').delete();query=record.id?query.eq('id',record.id):query.eq('student_id',String(student?.id||record.student_id));const result=await query;if(result.error)return alert('取消特殊情况失败：'+result.error.message)}
     if(student)student.special=null;specials.splice(index,1);saveLocal();renderSpecialFixed();renderMealFixed();window.renderAttendance?.();
   };
   window.editSpecial=index=>{const record=specials[index],student=students.find(s=>String(s.id)===String(record?.student_id)||s.name===record?.name);if(!record||!student)return;editingSpecialStudentId=String(student.id);$('specialStudent').value=student.name;$('specialStudent').disabled=true;$('specialGrade').value=student.grade;$('specialType').value=specialTypeLabel(record.type);$('specialNote').value=record.note||'';$('specialSchoolRequired').value=String(!!record.school_attendance_required);$('specialCareRequired').value=String(!!record.care_attendance_required);$('specialMealRequired').value=String(!!record.meal_required);$('specialCameToCare').value=String(!!record.came_to_care);$('specialSaveButton').textContent='保存修改';$('cancelSpecialEdit').classList.remove('hidden');$('specialFeatureForm').scrollIntoView({behavior:'smooth',block:'center'})};
@@ -293,7 +353,7 @@
 
   function installSummaryBoard(){
     const cards=$('summary')?.querySelectorAll(':scope > .card'),target=cards?.[cards.length-1];if(!target)return;
-    target.innerHTML='<h2 class="section-title">今日特殊情况</h2><p class="muted">按一至六年级横向分类；每个年级内的记录由上往下显示。</p><div id="summarySpecialBoard" class="summary-grade-grid"></div>';
+    target.innerHTML='<h2 class="section-title">当前特殊情况</h2><p class="muted">按一至六年级横向分类；记录会持续保留，直到老师在后台手动删除。</p><div id="summarySpecialBoard" class="summary-grade-grid"></div>';
     renderSummarySpecialBoard();
   }
   function removeEmergencyFeature(){
@@ -303,7 +363,7 @@
 
   function refreshSchoolUI(){ensureAttendanceFilters();ensureStudentForm();renderSchoolManager();refreshStudentSchoolOptions();annotateStudentList();window.renderAttendance?.();renderSpecialFixed();renderMealFixed()}
   function install(){
-    installStyle();installAttendance();installAdmin();installDaily();removeEmergencyFeature();installSummaryBoard();installSpecialForm();window.renderSpecial=renderSpecialFixed;
+    installStyle();installAttendance();installAdmin();installDaily();removeEmergencyFeature();installSummaryBoard();installAdminFeatureChooser();installMealPlanningPage();installSpecialForm();window.renderSpecial=renderSpecialFixed;
     window.renderAll=()=>{window.renderAttendance?.();window.renderAdmin?.();renderSpecialFixed();renderMealFixed()};
     window.addEventListener('schoolCatalogUpdated',refreshSchoolUI);refreshSchoolUI();
   }

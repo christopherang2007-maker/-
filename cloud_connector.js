@@ -11,7 +11,7 @@ async function pullCloud(){
   const [stu,att,spe,rem,schoolsResult]=await Promise.all([
     cloud.from('students').select('*'),
     cloud.from('attendance').select('*').eq('attendance_date',d),
-    cloud.from('special_records').select('*').eq('record_date',d),
+    cloud.from('special_records').select('*').order('created_at',{ascending:false}),
     cloud.from('emergency_reminders').select('*').eq('reminder_date',d),
     cloud.from('schools').select('*').order('name')
   ]);
@@ -28,7 +28,8 @@ async function pullCloud(){
     localStorage.setItem('fuchengStudentReturnPlans',JSON.stringify(Object.fromEntries(students.map(s=>[String(s.id),s.weekly_plan||{}]))));
     const map=new Map((att.data||[]).map(x=>[String(x.student_id),x]));
     students.forEach(s=>{const a=map.get(String(s.id));if(a){s.school=[!!a.school_a,!!a.school_b];s.care=[!!a.care_a,!!a.care_b];s.notified=!!a.notified;s.mealTaken=!!a.meal_taken}});
-    specials=(spe.data||[]).map(x=>{const s=students.find(a=>String(a.id)===String(x.student_id)),controls={school_attendance_required:!!x.school_attendance_required,care_attendance_required:!!x.care_attendance_required,meal_required:!!x.meal_required,came_to_care:!!x.came_to_care};if(s)s.special={type:x.type,note:x.note,...controls};return {id:x.id,student_id:x.student_id,name:s?.name||'未知学生',type:x.type,note:x.note,...controls}});
+    const seenSpecialStudents=new Set();
+    specials=(spe.data||[]).filter(x=>{const key=String(x.student_id);if(seenSpecialStudents.has(key))return false;seenSpecialStudents.add(key);return true}).map(x=>{const s=students.find(a=>String(a.id)===String(x.student_id)),controls={school_attendance_required:!!x.school_attendance_required,care_attendance_required:!!x.care_attendance_required,meal_required:!!x.meal_required,came_to_care:!!x.came_to_care};if(s)s.special={type:x.type,note:x.note,...controls};return {id:x.id,record_date:x.record_date,student_id:x.student_id,name:s?.name||'未知学生',type:x.type,note:x.note,...controls}});
     emergencies=(rem.data||[]).map(x=>({id:x.id,student:students.find(a=>String(a.id)===String(x.student_id))?.name||'未知学生',time:x.reminder_time.slice(0,5),message:x.message}));
     localSave();renderAll();
   }else if(cloudRole==='admin'){
@@ -49,11 +50,10 @@ async function pushCloud(){
     jobs.push(cloud.from('students').upsert(studentRows));
   }
   await Promise.all(jobs);
-  await cloud.from('special_records').delete().eq('record_date',d);
   await cloud.from('emergency_reminders').delete().eq('reminder_date',d);
-  const specialRows=specials.map(x=>({record_date:d,student_id:String(x.student_id||students.find(s=>s.name===x.name)?.id||''),type:x.type,note:x.note,school_attendance_required:!!x.school_attendance_required,care_attendance_required:!!x.care_attendance_required,meal_required:!!x.meal_required,came_to_care:!!x.came_to_care})).filter(x=>x.student_id);
+  const specialRows=specials.map(x=>({record_date:x.record_date||d,student_id:String(x.student_id||students.find(s=>s.name===x.name)?.id||''),type:x.type,note:x.note,school_attendance_required:!!x.school_attendance_required,care_attendance_required:!!x.care_attendance_required,meal_required:!!x.meal_required,came_to_care:!!x.came_to_care})).filter(x=>x.student_id);
   const emergencyRows=emergencies.map(x=>({reminder_date:d,student_id:String(students.find(s=>s.name===x.student)?.id||''),reminder_time:x.time,message:x.message})).filter(x=>x.student_id);
-  if(specialRows.length)await cloud.from('special_records').insert(specialRows);
+  if(specialRows.length)await cloud.from('special_records').upsert(specialRows,{onConflict:'student_id'});
   if(emergencyRows.length)await cloud.from('emergency_reminders').insert(emergencyRows);
 }
 async function startCloud(){try{let response=await fetch('/api/supabase-config',{cache:'no-store'}),config=await response.json();if(!response.ok||!config.url||!config.anonKey)throw new Error(config.error||'缺少 Supabase 配置');cloud=window.supabase.createClient(config.url,config.anonKey);window.cloud=cloud;localSave=window.save;window.save=()=>{localSave();pushCloud().catch(console.warn)};cloudPanel();let s=await cloud.auth.getSession();if(s.data.session)connected(s.data.session.user)}catch(error){console.warn('Supabase 未连接：',error.message);alert('无法连接 Supabase。请在 Vercel 设置 SUPABASE_URL 和 SUPABASE_PUBLISHABLE_KEY 后重新部署。')}}
