@@ -295,7 +295,11 @@
     if(student.special&&!needsMeal(student))return {...base,needed:false,label:'特殊情况：不用包饭',reason:student.special.note||specialTypeLabel(student.special.type),cancelledBySpecial:base.needed};
     return {...base,cancelledBySpecial:false};
   }
-  function mealPlanningMarkup(){return `<div class="meal-planning-layout"><section class="card"><h2 class="section-title">星期一至五学生饭量</h2><p class="muted">先选星期、年段与年级。灰色斜体代表这一天不用包饭。</p><div class="week-tabs" id="mealPlanWeeks"></div><div class="week-tabs" id="mealPlanStages"></div><div class="time-tabs" id="mealPlanGrades"></div><div class="meal-plan-stats" id="mealPlanStats"></div><div id="mealPlanStudents"></div><section class="special-meal-list"><h3 class="section-title">特殊情况／不用包饭</h3><div id="mealPlanSpecials"></div></section></section><aside class="school-pack-panel"><h2 class="section-title">学校要包的饭</h2><p class="muted" id="schoolPackDayLabel"></p><div id="schoolPackMeals"></div></aside></div>`}
+  function needsSchoolPackedMeal(student,day){
+    const plan=planFor(student)?.[day]||{};
+    return plan.status==='stay'&&plan.bringMeal==='yes';
+  }
+  function mealPlanningMarkup(){return `<div class="meal-planning-layout"><section class="card"><h2 class="section-title">星期一至五学生饭量</h2><p class="muted">先选星期、年段与年级。灰色斜体代表这一天不用包饭。</p><div class="week-tabs" id="mealPlanWeeks"></div><div class="week-tabs" id="mealPlanStages"></div><div class="time-tabs" id="mealPlanGrades"></div><div class="meal-plan-stats" id="mealPlanStats"></div><div id="mealPlanStudents"></div><section class="special-meal-list"><h3 class="section-title">特殊情况／不用包饭</h3><div id="mealPlanSpecials"></div></section></section><aside class="school-pack-panel"><h2 class="section-title">学校要包的饭</h2><p class="muted">只显示学生资料中设为“留校＋需要带饭”的学生。</p><div class="week-tabs school-pack-weeks" id="schoolPackWeeks"></div><p class="muted" id="schoolPackDayLabel"></p><div id="schoolPackMeals"></div></aside></div>`}
   function installMealPlanningPage(){
     const page=$('special'),nav=document.querySelector('[data-page="special"]');if(!page||!nav)return;
     if(!page.dataset.mealPlanning){page.dataset.mealPlanning='1';page.innerHTML=mealPlanningMarkup()}
@@ -307,6 +311,10 @@
     if(!$('mealPlanWeeks'))return;
     $('mealPlanWeeks').innerHTML=weekDays.map(day=>`<button class="${day===mealPlanDay?'active':''}" data-day="${html(day)}">${html(day)}</button>`).join('');
     $('mealPlanWeeks').querySelectorAll('button').forEach(button=>button.onclick=()=>{mealPlanDay=button.dataset.day;renderMealPlanning()});
+    if($('schoolPackWeeks')){
+      $('schoolPackWeeks').innerHTML=weekDays.map(day=>`<button class="${day===mealPlanDay?'active':''}" data-day="${html(day)}">${html(day)}</button>`).join('');
+      $('schoolPackWeeks').querySelectorAll('button').forEach(button=>button.onclick=()=>{mealPlanDay=button.dataset.day;renderMealPlanning()});
+    }
     $('mealPlanStages').innerHTML=['低年段','高年段'].map(stage=>`<button class="${stage===mealPlanStage?'active':''}" data-stage="${stage}">${stage}</button>`).join('');
     $('mealPlanStages').querySelectorAll('button').forEach(button=>button.onclick=()=>{mealPlanStage=button.dataset.stage;mealPlanGrade='全部';renderMealPlanning()});
     const stageGrades=mealPlanStage==='低年段'?lowGrades:['四年级','五年级','六年级'];
@@ -317,9 +325,9 @@
     $('mealPlanStudents').innerHTML='<div class="meal-plan-row header"><span>学生</span><span>年级</span><span>饭量</span><span>安排</span></div>'+decisions.map(({student,decision})=>`<div class="meal-plan-row ${decision.needed?(decision.mode==='送到学校'?'school-pack':''):'no-meal'}"><b>${html(student.name)}</b><span>${html(student.grade)}</span><span>${html(student.meal)}</span><span>${html(decision.label)}${decision.reason?`<small class="carrier-note">${html(decision.reason)}</small>`:''}</span></div>`).join('');
     const specialNoMeal=decisions.filter(item=>item.student.special&&!item.decision.needed);
     $('mealPlanSpecials').innerHTML=specialNoMeal.length?specialNoMeal.map(({student,decision})=>`<div class="special-meal-item"><b>${html(student.name)} · ${html(student.grade)} · ${html(student.meal)}</b><br>${html(decision.reason||specialTypeLabel(student.special.type))}</div>`).join(''):'<p class="muted">这个筛选没有特殊情况／不用包饭的学生。</p>';
-    const schoolMeals=students.map(student=>({student,base:baseMealDecision(student,mealPlanDay),decision:mealDecision(student,mealPlanDay)})).filter(item=>item.base.needed);
+    const schoolMeals=students.filter(student=>needsSchoolPackedMeal(student,mealPlanDay)).map(student=>({student,decision:mealDecision(student,mealPlanDay)}));
     $('schoolPackDayLabel').textContent=`${mealPlanDay} · 共 ${schoolMeals.filter(item=>item.decision.needed).length} 份`;
-    $('schoolPackMeals').innerHTML=schoolMeals.length?schoolMeals.map(({student,decision})=>`<div class="school-pack-item ${decision.needed?'':'cancelled'}"><b>${html(student.name)} · ${html(student.grade)} · ${html(student.meal)}</b><br>${decision.needed?html(decision.label):`不用包饭：${html(decision.reason||'特殊情况')}`}</div>`).join(''):'<p class="muted">这个星期没有需要准备的饭。</p>';
+    $('schoolPackMeals').innerHTML=schoolMeals.length?schoolMeals.map(({student,decision})=>`<div class="school-pack-item ${decision.needed?'':'cancelled'}"><b>${html(student.name)} · ${html(student.grade)} · ${html(student.meal)}</b><br>${decision.needed?'留校，需要带饭':`不用包饭：${html(decision.reason||'特殊情况')}`}</div>`).join(''):'<p class="muted">这个星期没有设置“留校＋需要带饭”的学生。</p>';
   }
 
   function renderSpecialFixed(){
