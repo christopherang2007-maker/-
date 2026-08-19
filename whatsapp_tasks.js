@@ -194,7 +194,8 @@
     const visible=unique.map(id=>students.find(student=>String(student.id)===String(id))).filter(Boolean);
     const eligible=visible.filter(student=>{
       const job=jobByStudent.get(String(student.id));
-      return !student.special&&student.care?.every(Boolean)&&groupByStudent.has(String(student.id))&&(!job||job.status==='cancelled');
+      const arrivalReady=window.canNotifyArrival?window.canNotifyArrival(student):(!student.special&&student.care?.every(Boolean));
+      return arrivalReady&&groupByStudent.has(String(student.id))&&(!job||job.status==='cancelled');
     });
     const missingGroup=visible.filter(student=>!groupByStudent.has(String(student.id)));
     return {eligible,missingGroup};

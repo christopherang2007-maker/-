@@ -19,8 +19,9 @@
 3. 按文件名顺序执行 `supabase/migrations` 中尚未执行过的 SQL。学校功能新增的文件是：
 
    - `20260817131237_add_schools_and_student_weekly_plans.sql`
+   - `20260819033235_add_special_situation_controls.sql`
 
-   这份 SQL 只新增学校表、学生学校字段与每周安排字段，不会清除学生资料。
+   这两份 SQL 只新增学校、学生每周安排及今日特殊情况控制字段，不会清除学生资料。
 4. 在 Supabase Authentication 设置关闭公开注册（Allow new users to sign up），老师账号由管理员预先建立和批准。
 5. Vercel 环境变量使用：
 

@@ -1,4 +1,4 @@
-const CACHE = 'fucheng-tuition-v3-schools';
+const CACHE = 'fucheng-tuition-v4-special-situations';
 const ASSETS = ['/', '/logo', '/manifest.webmanifest'];
 self.addEventListener('install', event => event.waitUntil(caches.open(CACHE).then(cache => cache.addAll(ASSETS))));
 self.addEventListener('activate', event => event.waitUntil(
