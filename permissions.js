@@ -168,7 +168,12 @@
     if(email===window.staffAccess.email&&(!approved||!selectedRoles.includes('control_teacher')))return alert('不能暂停自己的账号或移除自己的控制老师权限，以免无法再进入权限控制。');
     const button=$('saveStaffPermission');button.disabled=true;button.textContent='正在保存…';
     try{
-      const access=await cloud.from('staff_access').upsert({email,display_name:displayName,approved,created_by:cloudUser.id,updated_at:new Date().toISOString()},{onConflict:'email'});if(access.error)throw access.error;
+      const existing=permissionRows.find(item=>item.email===email);
+      const values={display_name:displayName,approved,updated_at:new Date().toISOString()};
+      const access=existing
+        ?await cloud.from('staff_access').update(values).eq('email',email)
+        :await cloud.from('staff_access').insert({email,...values,created_by:cloudUser.id});
+      if(access.error)throw access.error;
       const removeRoles=await cloud.from('staff_access_roles').delete().eq('email',email);if(removeRoles.error)throw removeRoles.error;
       if(selectedRoles.length){const addRoles=await cloud.from('staff_access_roles').insert(selectedRoles.map(role_key=>({email,role_key})));if(addRoles.error)throw addRoles.error}
       const removeSchools=await cloud.from('staff_access_schools').delete().eq('email',email);if(removeSchools.error)throw removeSchools.error;

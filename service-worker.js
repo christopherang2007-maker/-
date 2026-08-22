@@ -1,4 +1,4 @@
-const CACHE = 'fucheng-tuition-v10-staff-permissions';
+const CACHE = 'fucheng-tuition-v11-staff-rls-hotfix';
 const ASSETS = ['/', '/logo', '/manifest.webmanifest'];
 self.addEventListener('install', event => event.waitUntil(caches.open(CACHE).then(cache => cache.addAll(ASSETS))));
 self.addEventListener('activate', event => event.waitUntil(
