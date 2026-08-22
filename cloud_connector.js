@@ -3,9 +3,48 @@
 // 不要在这个前端文件中写入 service_role / secret key。
 let cloud,cloudUser,cloudRole='teacher',localSave;
 const cloudDate=()=>new Date().toLocaleDateString('sv-SE');
-function cloudPanel(){document.body.insertAdjacentHTML('beforeend',`<div id="cloudLogin" style="position:fixed;inset:0;background:#17223be8;z-index:99;display:grid;place-items:center"><form id="cloudForm" style="width:min(390px,90vw);background:#fff;padding:28px;border-radius:16px;box-shadow:0 12px 44px #0005"><h2 style="margin:0 0 8px">安心托育 · 云端登录</h2><p style="color:#6e7b91;font-size:13px;margin:0 0 18px">只允许管理员已经建立并批准的老师账号登录。</p><input required name="email" type="email" placeholder="邮箱" style="width:100%;padding:11px;margin:6px 0;border:1px solid #e5eaf2;border-radius:8px"><input required name="password" type="password" placeholder="密码（至少 6 位）" minlength="6" style="width:100%;padding:11px;margin:6px 0;border:1px solid #e5eaf2;border-radius:8px"><div id="loginError" style="min-height:18px;color:#c33;font-size:12px;margin:5px 0"></div><button style="width:100%;padding:11px;border:0;border-radius:8px;background:#3478f6;color:#fff;font-weight:bold;cursor:pointer">登录</button></form></div><button id="logout" style="position:fixed;right:18px;bottom:18px;z-index:5;border:0;border-radius:99px;background:#17223b;color:#fff;padding:9px 13px;display:none;cursor:pointer">退出云端账号</button>`);document.getElementById('cloudForm').onsubmit=e=>login(e,false);document.getElementById('logout').onclick=async()=>{await cloud.auth.signOut();location.reload()}}
+function cloudPanel(){document.body.insertAdjacentHTML('beforeend',`<div id="cloudLogin" style="position:fixed;inset:0;background:#17223be8;z-index:99;display:grid;place-items:center"><form id="cloudForm" style="width:min(390px,90vw);background:#fff;padding:28px;border-radius:16px;box-shadow:0 12px 44px #0005"><h2 style="margin:0 0 8px">安心托育 · 云端登录</h2><p style="color:#6e7b91;font-size:13px;margin:0 0 18px">网站已关闭自行注册。只允许管理员预先加入并批准的老师账号登录。</p><input required name="email" type="email" placeholder="管理员批准的 Gmail" autocomplete="username" style="width:100%;padding:11px;margin:6px 0;border:1px solid #e5eaf2;border-radius:8px"><input required name="password" type="password" placeholder="密码（至少 6 位）" autocomplete="current-password" minlength="6" style="width:100%;padding:11px;margin:6px 0;border:1px solid #e5eaf2;border-radius:8px"><div id="loginError" style="min-height:18px;color:#c33;font-size:12px;margin:5px 0"></div><button style="width:100%;padding:11px;border:0;border-radius:8px;background:#3478f6;color:#fff;font-weight:bold;cursor:pointer">登录</button><p style="color:#8792a5;font-size:11px;text-align:center;margin:12px 0 0">没有注册入口；如需账号，请联系控制老师。</p></form></div><button id="logout" style="position:fixed;right:18px;bottom:18px;z-index:5;border:0;border-radius:99px;background:#17223b;color:#fff;padding:9px 13px;display:none;cursor:pointer">退出云端账号</button>`);document.getElementById('cloudForm').onsubmit=e=>login(e,false);document.getElementById('logout').onclick=async()=>{await cloud.auth.signOut();location.reload()}}
 async function login(e){if(e)e.preventDefault();let f=document.getElementById('cloudForm'),email=f.email.value,password=f.password.value,err=document.getElementById('loginError');err.textContent='';let r=await cloud.auth.signInWithPassword({email,password});if(r.error){err.textContent=r.error.message;return}await connected(r.data.user||r.data.session?.user)}
-async function connected(user){cloudUser=user;window.cloudUser=user;let p=await cloud.from('profiles').select('role,approved').eq('id',user.id).single();if(p.error||!p.data?.approved){await cloud.auth.signOut();window.cloudUser=null;document.getElementById('loginError').textContent=p.error?.message||'这个账号尚未获得管理员批准。';return}cloudRole=p.data.role||'teacher';window.cloudRole=cloudRole;document.getElementById('cloudLogin').remove();document.getElementById('logout').style.display='block';await pullCloud();if(cloudRole!=='admin')document.querySelector('[data-page="admin"]').style.display='none'}
+async function connected(user){
+  cloudUser=user;window.cloudUser=user;
+  const email=String(user.email||'').trim().toLowerCase();
+  const [profile,access,roles,schools]=await Promise.all([
+    cloud.from('profiles').select('role,approved,display_name').eq('id',user.id).single(),
+    cloud.from('staff_access').select('email,user_id,display_name,approved').eq('email',email).maybeSingle(),
+    cloud.from('staff_access_roles').select('role_key').eq('email',email),
+    cloud.from('staff_access_schools').select('school_id').eq('email',email)
+  ]);
+  const permissionError=access.error||roles.error||schools.error;
+  if(permissionError){
+    await cloud.auth.signOut();window.cloudUser=null;
+    document.getElementById('loginError').textContent='权限资料尚未安装或无法读取：'+permissionError.message;
+    return;
+  }
+  if(profile.error||!profile.data?.approved||!access.data?.approved){
+    await cloud.auth.signOut();window.cloudUser=null;
+    document.getElementById('loginError').textContent=profile.error?.message||'这个 Gmail 尚未由控制老师加入并批准。';
+    return;
+  }
+  const roleKeys=(roles.data||[]).map(item=>item.role_key);
+  if(!roleKeys.length){
+    await cloud.auth.signOut();window.cloudUser=null;
+    document.getElementById('loginError').textContent='这个账号尚未分配任何权限。';
+    return;
+  }
+  window.staffAccess={
+    email,
+    displayName:access.data.display_name||profile.data.display_name||email.split('@')[0],
+    roles:roleKeys,
+    schoolIds:(schools.data||[]).map(item=>String(item.school_id))
+  };
+  window.staffRoles=roleKeys;
+  window.staffSchoolIds=window.staffAccess.schoolIds;
+  cloudRole=roleKeys.includes('control_teacher')?'admin':'teacher';window.cloudRole=cloudRole;
+  window.dispatchEvent(new CustomEvent('staffAccessReady',{detail:window.staffAccess}));
+  document.getElementById('cloudLogin').remove();document.getElementById('logout').style.display='block';
+  await pullCloud();
+  window.dispatchEvent(new CustomEvent('staffAccessReady',{detail:window.staffAccess}));
+}
 async function pullCloud(){
   const d=cloudDate();
   const [stu,att,spe,rem,schoolsResult]=await Promise.all([

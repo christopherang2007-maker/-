@@ -21,16 +21,19 @@
    - `20260817131237_add_schools_and_student_weekly_plans.sql`
    - `20260819033235_add_special_situation_controls.sql`
    - `20260819162101_persist_special_situations.sql`
+   - `20260822101438_staff_access_and_permissions.sql`
 
    这些 SQL 新增学校、学生每周安排与特殊情况控制字段。最后一份迁移会把同一学生重复的旧特殊情况合并为最新一条；不会删除学生资料。特殊情况之后会持续保留，直到老师手动删除。
-4. 在 Supabase Authentication 设置关闭公开注册（Allow new users to sign up），老师账号由管理员预先建立和批准。
-5. Vercel 环境变量使用：
+4. 在 Supabase Authentication 设置关闭公开注册（Allow new users to sign up）。网站虽已删除注册入口，但这项设置才会从服务端真正禁止自行注册。
+5. 执行最新的 `supabase/migrations/20260822101438_staff_access_and_permissions.sql` 后，可在网站「后台信息 → 权限控制」加入 Gmail、显示名字、多个角色和学校范围。
+6. 权限控制加入 Gmail 只负责授权。若界面显示「等待建立账号」，管理员仍需在 Supabase Dashboard → Authentication → Users 建立相同 Gmail 的登录账号。
+7. Vercel 环境变量使用：
 
    - `SUPABASE_URL`
    - `SUPABASE_PUBLISHABLE_KEY`
 
    为兼容旧部署，程序仍会读取 `SUPABASE_ANON_KEY`，但不要设置 service-role/secret key。
-6. 将这个目录部署至 Vercel，再重新打开网站；本版本已提升 PWA 缓存编号，旧脚本会自动淘汰。
+8. 将这个目录部署至 Vercel，再重新打开网站；本版本已提升 PWA 缓存编号，旧脚本会自动淘汰。
 
 ## 操作流程
 
